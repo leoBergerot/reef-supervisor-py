@@ -5,9 +5,9 @@ services:
     ports:
       - 8080:80
     volumes:
-      - ./app:/usr/src/app/app
+      - ./:/usr/src
     environment:
-      - PYTHONPATH=/usr/src/app
+      - PYTHONPATH=/usr/src
     networks:
       - reef
   database:
