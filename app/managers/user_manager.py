@@ -30,8 +30,8 @@ class UserManager:
         user.password = hash_password(user_request.password)
         user.email = str(user_request.email)
 
-        self.db.add(user)
+        merge_user = self.db.merge(user)
         self.db.commit()
-        self.db.refresh(user)
+        self.db.refresh(merge_user)
 
-        return user
+        return merge_user

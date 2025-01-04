@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Security
 from app.managers import UserManager
 from app.schemas.user import User
 from app.models.user import UserRequest, UserResponse
@@ -28,7 +28,7 @@ def create_user(user: UserRequest, user_repository: Annotated[UserRepository, De
 
 @router.patch("", response_model=UserResponse)
 def update_user(user: UserRequest, user_repository: Annotated[UserRepository, Depends(UserRepository)],
-                current_user: Annotated[User, Depends(get_current_user)],
+                current_user: Annotated[User, Security(get_current_user, scopes=["USER"])],
                 user_manager: Annotated[UserManager, Depends(UserManager)]):
     if not user_repository.is_email_unique(str(user.email), current_user.id):
         raise HTTPException(status_code=400, detail="Email already registered")
