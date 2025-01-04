@@ -15,8 +15,7 @@ class ParameterManager:
         self.user_repository = user_repository
 
     def create_persist(self, parameter_request: ParameterRequest) -> Parameter:
-        parameter = Parameter()
-        parameter = mapped_model_to_schema(parameter_request, parameter)
+        parameter = Parameter(**parameter_request.model_dump())
 
         self.db.add(parameter)
         self.db.commit()
