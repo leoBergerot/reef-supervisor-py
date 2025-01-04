@@ -1,10 +1,14 @@
+from typing import Annotated
+from fastapi import Depends
 from sqlalchemy.orm import Session
+
+from app.db.session import get_db
 from app.schemas.user import User
 from app.models.user import UserRequest
 
 
 class UserRepository:
-    def __init__(self, db: Session):
+    def __init__(self, db: Annotated[Session, Depends(get_db)]):
         self.db = db
 
     def get_by_id(self, user_id: int) -> User:
@@ -19,12 +23,6 @@ class UserRepository:
             query = query.filter(User.id != current_id)
 
         return query.first() is None
-
-    def create(self, user: User) -> User:
-        self.db.add(user)
-        self.db.commit()
-        self.db.refresh(user)
-        return user
 
     def update(self, user: User, user_request: UserRequest) -> User:
         for field, value in user_request.dict(exclude_unset=True).items():
