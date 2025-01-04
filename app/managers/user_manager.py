@@ -26,7 +26,7 @@ class UserManager:
 
         return user
 
-    def update_persist(self, user_request: UserRequest, user: User):
+    def update_persist(self, user_request: UserRequest, user: User) -> User:
         user.password = hash_password(user_request.password)
         user.email = str(user_request.email)
 
