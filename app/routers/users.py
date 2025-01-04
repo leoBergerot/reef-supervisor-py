@@ -23,7 +23,7 @@ def create_user(user: UserRequest, user_repository: Annotated[UserRepository, De
     new_user = User(email=user.email, password=hashed_password)
     new_user = user_manager.create_add_preferences_persist(new_user)
 
-    return new_user.model_dump(include={"id", "email"})
+    return UserResponse.model_validate(new_user, from_attributes=True)
 
 
 @router.patch("", response_model=UserResponse)
@@ -34,4 +34,4 @@ def update_user(user: UserRequest, user_repository: Annotated[UserRepository, De
         raise HTTPException(status_code=400, detail="Email already registered")
     current_user = user_manager.update_persist(user, current_user)
 
-    return current_user.model_dump(include={"id", "email"})
+    return UserResponse.model_validate(current_user, from_attributes=True)
