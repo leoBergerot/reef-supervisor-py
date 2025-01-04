@@ -3,12 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from app.core.security import create_access_token, Auth, Token
 from typing import Annotated
 
-router = APIRouter()
-
-
-@router.get("/")
-def read_root():
-    return {"Hello": "World"}
+router = APIRouter(tags=["Authentication"])
 
 
 @router.post("/token", )
