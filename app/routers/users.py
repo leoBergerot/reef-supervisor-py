@@ -24,7 +24,7 @@ def create_user(user: UserRequest, db: Annotated[Session, Depends(get_db)]) -> U
     hashed_password = hash_password(user.password)
     new_user = User(email=user.email, password=hashed_password)
     user_repository.create(new_user)
-    return new_user.dict(include={"id", "email"})
+    return new_user.model_dump(include={"id", "email"})
 
 
 @router.patch("", response_model=UserResponse)
@@ -35,4 +35,4 @@ def update_user(user: UserRequest, db: Annotated[Session, Depends(get_db)],
         raise HTTPException(status_code=400, detail="Email already registered")
     user.password = hash_password(user.password)
     update_user = user_repository.update(current_user, user)
-    return update_user.dict(include={"id", "email"})
+    return update_user.model_dump(include={"id", "email"})
