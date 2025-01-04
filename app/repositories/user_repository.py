@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.schemas.user import User
-from app.models.user import UserRequest
 
 
 class UserRepository:
@@ -23,10 +22,3 @@ class UserRepository:
             query = query.filter(User.id != current_id)
 
         return query.first() is None
-
-    def update(self, user: User, user_request: UserRequest) -> User:
-        for field, value in user_request.dict(exclude_unset=True).items():
-            setattr(user, field, value)
-        self.db.commit()
-        self.db.refresh(user)
-        return user
