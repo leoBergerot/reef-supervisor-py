@@ -12,3 +12,6 @@ class ParameterRepository:
 
     def get_all(self) -> list[Type[Parameter]]:
         return self.db.query(Parameter).all()
+
+    def get_by_id(self, parameter_id: int) -> Parameter:
+        return self.db.query(Parameter).filter(Parameter.id == parameter_id).first()

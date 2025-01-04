@@ -23,5 +23,5 @@ async def login_for_access_token(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = create_access_token({"email": user.email})
+    access_token = create_access_token({"email": user.email, "scopes": user.scopes})
     return Token(access_token=access_token, token_type="bearer")

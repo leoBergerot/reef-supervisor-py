@@ -2,6 +2,8 @@ from sqlmodel import Field, SQLModel, Relationship
 
 from app.schemas.timestampable import Timestampable
 from sqlalchemy import UniqueConstraint
+from sqlalchemy import Column
+from sqlalchemy.dialects.postgresql import JSON
 
 
 class User(SQLModel, Timestampable, table=True):
@@ -10,3 +12,4 @@ class User(SQLModel, Timestampable, table=True):
     email: str = Field()
     password: str = Field()
     preferences: list["Preference"] = Relationship(back_populates="user")
+    scopes: list[str] = Field(sa_column=Column(JSON), default=["USER"])
