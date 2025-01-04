@@ -1,4 +1,3 @@
-from sqlmodel import SQLModel
 from app.db.session import engine
 from app.schemas import *
 from alembic import context

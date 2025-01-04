@@ -2,7 +2,6 @@ from datetime import datetime
 from sqlalchemy import event
 from sqlmodel import SQLModel
 from app.schemas.timestampable import Timestampable
-from app.schemas.user import User
 
 
 def attach_timestamps_events(cls):
