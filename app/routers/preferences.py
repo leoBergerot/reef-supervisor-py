@@ -13,7 +13,7 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=list[PreferenceResponse])
+@router.get("", response_model=list[PreferenceResponse], description="Need authentication to read preferences and return it according to user authenticate")
 def read(current_user: Annotated[User, Security(get_current_user, scopes=["USER"])],
          preference_repository: Annotated[PreferenceRepository, Depends(PreferenceRepository)]):
     return [PreferenceResponse.model_validate(preference, from_attributes=True) for preference in
