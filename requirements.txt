@@ -7,3 +7,5 @@ alembic
 bcrypt
 passlib
 pyjwt
+pytest
+httpx
