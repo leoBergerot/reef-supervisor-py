@@ -84,3 +84,18 @@ def test_preferences(auth_token):
     response = client.patch(f"/preferences/{preference_id}", headers=headers, json={"enabled": False})
     assert response.status_code == 200
     assert response.json()["enabled"] == False
+
+
+def test_tanks(auth_token):
+    headers = {
+        "Authorization": f"Bearer {auth_token}"
+    }
+
+    tank_name = "First tank"
+    response = client.post("/tanks", headers=headers, json={"name": tank_name})
+    assert response.status_code == 200
+    assert response.json()["name"] == tank_name
+
+    response = client.get("/tanks", headers=headers)
+    assert response.status_code == 200
+    assert len(response.json()) == 1
