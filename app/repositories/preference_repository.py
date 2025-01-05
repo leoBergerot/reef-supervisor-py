@@ -1,31 +1,20 @@
-from typing import Annotated, Type
-from fastapi import Depends
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
-
-from app.db.session import get_db
-from app.schemas import Parameter
+from sqlmodel import Session, select, and_
+from app.db.session import engine
+from app.models import PreferenceRequest
+from app.schemas import Preference, Parameter, User
 
 
-class ParameterRepository:
-    def __init__(self, db: Annotated[Session, Depends(get_db)]):
-        self.db = db
+class PreferenceRepository:
+    def get_by_id_and_user(self, id: int, user: User) -> Parameter:
+        with Session(engine) as session:
+            return session.exec(
+                select(Preference).where(and_(Preference.id == id, Preference.user_id == user.id))).first()
 
-    def get_all(self) -> list[Type[Parameter]]:
-        return self.db.query(Parameter).all()
+    def update_persist(self, preference_request: PreferenceRequest, preference: Preference) -> Preference:
+        preference = preference.model_copy(update=preference_request.model_dump())
+        with Session(engine) as session:
+            preference = session.merge(preference)
+            session.commit()
+            session.refresh(preference)
 
-    def get_by_id(self, parameter_id: int) -> Parameter:
-        return self.db.query(Parameter).filter(Parameter.id == parameter_id).first()
-
-    def get_by_filter(self, name: str | None, ids: list[int] | None) -> list[Type[Parameter]]:
-        query = self.db.query(Parameter)
-        conditions = []
-        if name is not None:
-            conditions.append(Parameter.name.ilike(f'%{name}%'))
-        if ids is not None:
-            conditions.append(Parameter.id.in_(ids))
-
-        if len(conditions) > 0:
-            query = query.filter(and_(*conditions))
-
-        return query.all()
+        return preference

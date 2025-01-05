@@ -9,7 +9,7 @@ from app.core.security import get_current_user
 
 router = APIRouter(
     prefix="/users",
-    tags=["users"]
+    tags=["Users"]
 )
 
 
