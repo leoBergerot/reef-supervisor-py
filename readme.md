@@ -17,5 +17,5 @@ docker exec -it reef-fast-api alembic upgrade head
 
 # pass test
 ```
-docker exec -it reef-fast-api pytest
+docker exec -it reef-fast-api pytest -s
 ```

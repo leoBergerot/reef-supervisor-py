@@ -26,6 +26,8 @@ def confirm_and_load_fixtures(session: Session):
         print("Cleaning the database...")
         clean_database(session)
         print("Database cleaned.")
+    else:
+        exit()
 
     print("Loading fixtures...")
     load_fixtures(session)
