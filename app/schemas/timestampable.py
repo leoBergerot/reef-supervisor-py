@@ -1,11 +1,16 @@
-from datetime import datetime
+from datetime import datetime, UTC
+from typing import Annotated
+
 from sqlmodel import Field
-from typing import Optional
+
+
+def now_utc():
+    return datetime.now(UTC)
 
 
 class Timestampable():
     """
-    Classe de base abstraite pour les entités ayant des timestamps.
+    Abstract class timestampable
     """
-    created_at: datetime | None = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime | None = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: Annotated[datetime, Field(default_factory=now_utc, nullable=False)]
+    updated_at: Annotated[datetime, Field(default_factory=now_utc, nullable=False)]
