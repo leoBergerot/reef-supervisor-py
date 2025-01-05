@@ -10,7 +10,7 @@ from app.schemas import User
 
 router = APIRouter(
     prefix="/parameters",
-    tags=["parameters"],
+    tags=["Parameters"],
 )
 
 

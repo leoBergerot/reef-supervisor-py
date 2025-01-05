@@ -1,27 +1,33 @@
-from typing import Annotated, Type
-from fastapi import Depends
-from sqlalchemy.orm import Session
-
-from app.db.session import get_db
+from typing import Sequence
+from sqlmodel import Session, select, and_
+from app.db.session import engine
 from app.schemas.user import User
 
 
 class UserRepository:
-    def __init__(self, db: Annotated[Session, Depends(get_db)]):
-        self.db = db
 
-    def get_all(self) -> list[Type[User]]:
-        return self.db.query(User).all()
+    def get_all(self) -> Sequence[User]:
+        with Session(engine) as session:
+            return session.exec(select(User)).all()
 
     def get_by_id(self, user_id: int) -> User:
-        return self.db.query(User).filter(User.id == user_id).first()
+        with Session(engine) as session:
+            return session.exec(select(User).filter(User.id == user_id)).first()
 
     def get_by_email(self, email: str) -> User:
-        return self.db.query(User).filter(User.email == email).first()
+        with Session(engine) as session:
+            return session.exec(select(User).filter(User.email == email)).first()
 
     def is_email_unique(self, email: str, current_id: int | None = None) -> bool:
-        query = self.db.query(User).filter(User.email == email)
-        if current_id:
-            query = query.filter(User.id != current_id)
+        with Session(engine) as session:
+            query = select(User)
+            conditions = [User.email == email]
+            if current_id:
+                conditions.append(User.id != current_id)
 
-        return query.first() is None
+            if len(conditions) > 1:
+                query = query.where(*conditions)
+            else:
+                query = query.where(and_(*conditions))
+
+            return session.exec(query).first() is None

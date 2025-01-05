@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from app.core.security import hash_password
-from app.db.session import get_db
+from app.db.session import engine
 from app.models import UserRequest
 from app.repositories import ParameterRepository
 from app.schemas import User, Preference
@@ -11,9 +11,10 @@ from sqlmodel import Session
 
 class UserManager:
     def __init__(self, parameter_repository: Annotated[ParameterRepository, Depends(ParameterRepository)],
-                 db: Annotated[Session, Depends(get_db)]):
+                 ):
         self.parameter_repository = parameter_repository
-        self.db = db
+        with Session(engine) as session:
+            self.db = session
 
     def create_add_preferences_persist(self, user: User) -> User:
         parameters = self.parameter_repository.get_all()
