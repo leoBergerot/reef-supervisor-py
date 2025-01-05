@@ -8,7 +8,7 @@ class PreferenceRepository:
     def get_by_id_and_user(self, id: int, user: User) -> Parameter:
         with Session(engine) as session:
             return session.exec(
-                select(Preference).where(and_(Preference.id == id, Preference.user_id == user.id))).first()
+                select(Preference).filter(and_(Preference.id == id, Preference.user_id == user.id))).first()
 
     def update_persist(self, preference_request: PreferenceRequest, preference: Preference) -> Preference:
         preference = preference.model_copy(update=preference_request.model_dump())
