@@ -11,7 +11,7 @@ class ParameterRepository:
 
     def get_by_id(self, parameter_id: int) -> Parameter:
         with Session(engine) as session:
-            return session.exec(select(Parameter).filter(col(Parameter.id == parameter_id))).first()
+            return session.exec(select(Parameter).filter(col(Parameter.id) == parameter_id)).first()
 
     def get_by_filter(self, name: str | None, ids: list[int] | None) -> Sequence[Parameter]:
         with Session(engine) as session:

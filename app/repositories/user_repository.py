@@ -12,11 +12,11 @@ class UserRepository:
 
     def get_by_id(self, user_id: int) -> User:
         with Session(engine) as session:
-            return session.exec(select(User).filter(col(User.id == user_id))).first()
+            return session.exec(select(User).filter(col(User.id) == user_id)).first()
 
     def get_by_email(self, email: str) -> User:
         with Session(engine) as session:
-            return session.exec(select(User).filter(col(User.email == email))).first()
+            return session.exec(select(User).filter(col(User.email) == email)).first()
 
     def is_email_unique(self, email: str, current_id: int | None = None) -> bool:
         with Session(engine) as session:
