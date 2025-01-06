@@ -2,7 +2,6 @@ from decimal import Decimal
 from typing import Annotated, Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.models import ParameterResponse, TankResponse
 from app.repositories import ParameterRepository
 from app.schemas.timestampable import Timestampable
 
@@ -36,5 +35,12 @@ class MeasureRequest(BaseModel):
                 raise ValueError('"value" should be not blank')
         return data
 
+
 class MeasureResponse(MeasureRequest, Timestampable):
     id: int
+
+
+class MeasureListPaginateResponse(BaseModel):
+    data: list[MeasureResponse]
+    total_page: int
+    total: int
