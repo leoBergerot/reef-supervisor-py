@@ -1,11 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Security
 
 from app.core.security import get_current_user
 from app.managers import MeasureManager
 from app.models import MeasureResponse, MeasureRequest
-from app.repositories import TankRepository
+from app.models.measure import MeasureListPaginateResponse
+from app.repositories import TankRepository, MeasureRepository
 from app.schemas import User
 
 router = APIRouter(
@@ -14,9 +15,22 @@ router = APIRouter(
 )
 
 
+@router.get("", response_model=MeasureListPaginateResponse, description="Read measure according to user authenticated")
+def read(current_user: Annotated[User, Security(get_current_user, scopes=['USER'])],
+         measure_repository: Annotated[MeasureRepository, Depends(MeasureRepository)],
+         page: int = 1,
+         parameter_id: int | None = None,
+         tank_id: int | None = None,
+         ):
+    measures = measure_repository.get_filter(current_user, parameter_id, tank_id, page)
+    return MeasureListPaginateResponse(
+        **{'data': [MeasureResponse.model_validate(measure, from_attributes=True) for measure in measures['results']],
+           'total_page': measures['total_page'], 'total': measures['total']})
+
+
 @router.post("", response_model=MeasureResponse, description="Create measure link to user authenticated")
 def create(measure_request: MeasureRequest,
-           current_user: Annotated[User, Depends(get_current_user)],
+           current_user: Annotated[User, Security(get_current_user, scopes=['USER'])],
            tank_repository: Annotated[TankRepository, Depends(TankRepository)],
            measure_manager: Annotated[MeasureManager, Depends(MeasureManager)]):
     if not tank_repository.is_tank_owned_by_user(measure_request.tank_id, current_user):
