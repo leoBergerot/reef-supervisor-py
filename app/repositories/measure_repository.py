@@ -1,4 +1,5 @@
 import math
+from typing import Sequence
 
 from app.db.session import engine
 from app.schemas import User, Measure, Parameter, Tank
@@ -20,7 +21,7 @@ class MeasureRepository:
                 )).first()
 
     def get_filter(self, user: User, parameter_id: int | None = None, tank_id: int | None = None, page: int = 1,
-                   offset=10) -> Measure:
+                   offset=10) -> Sequence[Measure]:
         with Session(engine) as session:
             conditions = [col(Tank.user_id) == user.id]
             if parameter_id:
