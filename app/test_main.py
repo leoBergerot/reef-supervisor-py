@@ -130,8 +130,6 @@ def test_tanks(auth_token):
     assert response.status_code == 200
     assert len(response.json()) == 1
 
-    return response.json()
-
 
 def test_update_parameter(auth_token_admin):
     headers = {
@@ -204,3 +202,22 @@ def test_create_measure(auth_token, auth_token_admin):
 
     response = client.post("measures", headers=headers, json=measure)
     assert response.status_code == 401
+
+
+def test_get_and_update_measure(auth_token):
+    headers = {
+        "Authorization": f"Bearer {auth_token}"
+    }
+    response = client.get("/measures", headers=headers)
+    measures = response.json()
+    assert measures.get('total') == len(measures.get('data'))
+
+    for measure in measures.get('data'):
+        response = client.get(f"/parameters?ids={measure.get('parameter_id')}", headers=headers)
+        parameter = response.json()[0]
+        if parameter.get('need_value'):
+            response = client.patch(f"/measures/{measure.get('id')}", headers=headers, json={'value': 0})
+            assert response.status_code == 200
+        else:
+            response = client.patch(f"/measures/{measure.get('id')}", headers=headers, json={'value': 0})
+            assert response.status_code == 422
