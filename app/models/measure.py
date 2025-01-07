@@ -1,12 +1,13 @@
 from decimal import Decimal
 from typing import Annotated, Any
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator, ValidationError
+from pydantic_core import InitErrorDetails
 
 from app.repositories import ParameterRepository
 from app.schemas.timestampable import Timestampable
 
 
-class Base(BaseModel):
+class MeasureRequestValue(BaseModel):
     value: Annotated[Decimal, Field(decimal_places=2)]
 
 
@@ -29,11 +30,27 @@ class MeasureRequest(BaseModel):
         if isinstance(data, dict) and 'parameter_id' in data:
             parameter_id = data['parameter_id']
             parameter = ParameterRepository().get_by_id(parameter_id)
-            if parameter and not parameter.need_value and 'value' in data:
-                raise ValueError('"value" should be blank')
+
+            if parameter and not parameter.need_value and 'value' in data and data.get('value') is not None:
+                raise ValidationError.from_exception_data(
+                    title="Validation Error for MeasureRequest",
+                    line_errors=[InitErrorDetails(**{
+                        "loc": ("value",),
+                        "input": data,
+                        "type": "value_error",
+                        "ctx": {'error': '"value" should be blank'}
+                    })])
             if parameter and parameter.need_value and 'value' not in data:
-                raise ValueError('"value" should be not blank')
-        return data
+                raise ValidationError.from_exception_data(
+                    title="Validation Error for MeasureRequest",
+                    line_errors=[InitErrorDetails(**{
+                        "loc": ("value",),
+                        "input": data,
+                        "type": "value_error",
+                        "ctx": {'error': '"value" should be not blank'}
+
+                    })])
+            return data
 
 
 class MeasureResponse(MeasureRequest, Timestampable):
