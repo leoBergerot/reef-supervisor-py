@@ -31,7 +31,7 @@ def read(current_user: Annotated[User, Security(get_current_user, scopes=['USER'
            'total_page': measures['total_page'], 'total': measures['total']})
 
 
-@router.patch("/{measure_id}", response_model=MeasureResponse, description="Update value")
+@router.patch("/{measure_id}", response_model=MeasureResponse, description="Update measure value")
 def updateValue(measure_id: int,
                 measure_request: MeasureRequestValue,
                 current_user: Annotated[User, Security(get_current_user, scopes=["USER"])],
