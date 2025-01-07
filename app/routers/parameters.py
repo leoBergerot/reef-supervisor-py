@@ -41,5 +41,4 @@ def read(parameter_repository: Annotated[ParameterRepository, Depends(ParameterR
          name: str | None = None,
          ids: Annotated[list[int] | None, Query()] = None):
     parameters = parameter_repository.get_by_filter(name=name, ids=ids)
-    print(parameters)
     return [ParameterResponse.model_validate(parameter, from_attributes=True) for parameter in parameters]

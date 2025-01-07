@@ -7,9 +7,20 @@ from sqlalchemy import func
 
 
 class MeasureRepository:
+    def get_measure_by_id_and_user(self, measure_id: int, user: User) -> Measure | None:
+        with Session(engine) as session:
+            return session.exec(
+                select(Measure)
+                .join(Tank)
+                .filter(
+                    and_(
+                        col(Measure.id) == measure_id,
+                        col(Tank.user_id) == user.id
+                    )
+                )).first()
 
     def get_filter(self, user: User, parameter_id: int | None = None, tank_id: int | None = None, page: int = 1,
-                   offset=10):
+                   offset=10) -> Measure:
         with Session(engine) as session:
             conditions = [col(Tank.user_id) == user.id]
             if parameter_id:
