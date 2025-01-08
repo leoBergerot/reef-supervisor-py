@@ -2,6 +2,7 @@ from decimal import Decimal
 import random
 
 import pytest
+from fastapi import status
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
@@ -221,3 +222,13 @@ def test_get_and_update_measure(auth_token):
         else:
             response = client.patch(f"/measures/{measure.get('id')}", headers=headers, json={'value': 0})
             assert response.status_code == 422
+
+def test_delete(auth_token):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    response_measures = client.get("/measures", headers=headers)
+    measure_id = int(response_measures.json()['data'][0]['id'])
+    response = client.delete(f"/measures/{measure_id}", headers=headers)
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    new_response_measures = client.get("/measures", headers=headers)
+    assert len(new_response_measures.json()['data']) == len(response_measures.json()['data'])-1

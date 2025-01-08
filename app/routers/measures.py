@@ -2,7 +2,7 @@ from http.client import responses
 from typing import Annotated
 from unittest.mock import patch
 
-from fastapi import APIRouter, Depends, HTTPException, status, Security
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Security
 
 from app.core.security import get_current_user
 from app.managers import MeasureManager
@@ -40,7 +40,7 @@ def updateValue(measure_id: int,
     measure = measure_repository.get_measure_by_id_and_user(measure_id, current_user)
     if measure is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Measure ID {measure_id} does not belong to User ID {current_user.id}")
     return MeasureResponse.model_validate(measure_manager.updateValue(measure_request, measure).model_dump(),
                                           from_attributes=True)
@@ -58,3 +58,26 @@ def create(measure_request: MeasureRequest,
     measure = measure_manager.create(measure_request)
 
     return MeasureResponse.model_validate(measure.model_dump(), from_attributes=True)
+
+
+@router.delete(
+    "/{measure_id}",
+    description="Delete measure link to user authenticated",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete(
+    measure_id: int,
+    current_user: Annotated[User, Security(get_current_user, scopes=["USER"])],
+    measure_repository: Annotated[MeasureRepository, Depends(MeasureRepository)],
+    measure_manager: Annotated[MeasureManager, Depends(MeasureManager)],
+):
+    measure = measure_repository.get_measure_by_id_and_user(measure_id, current_user)
+    if not measure:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Measure id {measure_id} does not belong to User ID {current_user.id}",
+        )
+
+    measure_manager.delete(measure_id, measure)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

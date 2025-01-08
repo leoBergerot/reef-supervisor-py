@@ -30,3 +30,8 @@ class MeasureManager:
             session.commit()
             session.refresh(measure)
         return measure
+    
+    def delete(self, measure_id: int, measure: Measure) -> None:
+        with Session(engine) as sesion:
+            sesion.delete(measure)
+            sesion.commit()
