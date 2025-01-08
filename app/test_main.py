@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import datetime, UTC
 import random
 
 import pytest
@@ -206,6 +207,7 @@ def test_create_measure(auth_token, auth_token_admin):
 
 
 def test_get_and_update_measure(auth_token):
+    test_created_at = False
     headers = {
         "Authorization": f"Bearer {auth_token}"
     }
@@ -213,14 +215,24 @@ def test_get_and_update_measure(auth_token):
     measures = response.json()
     assert measures.get('total') == len(measures.get('data'))
 
+    data = {'value': 0}
     for measure in measures.get('data'):
         response = client.get(f"/parameters?ids={measure.get('parameter_id')}", headers=headers)
         parameter = response.json()[0]
         if parameter.get('need_value'):
-            response = client.patch(f"/measures/{measure.get('id')}", headers=headers, json={'value': 0})
+            if not test_created_at:
+                test_created_at = True
+                data["created_at"] = (
+                    datetime.now(UTC)
+                    .isoformat(timespec="milliseconds")
+                    .replace("+00:00", "Z")
+                )
+            response = client.patch(
+                f"/measures/{measure.get('id')}", headers=headers, json=data
+            )
             assert response.status_code == 200
         else:
-            response = client.patch(f"/measures/{measure.get('id')}", headers=headers, json={'value': 0})
+            response = client.patch(f"/measures/{measure.get('id')}", headers=headers, json=data)
             assert response.status_code == 422
 
 def test_delete(auth_token):
