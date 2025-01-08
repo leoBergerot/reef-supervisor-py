@@ -40,7 +40,7 @@ class MeasureRepository:
                 select(Measure)
                 .join(Tank)
                 .filter(and_(*conditions))
-                .order_by(col(Measure.id).desc())
+                .order_by(col(Measure.created_at).desc())
                 .offset((page - 1) * offset)
                 .limit(offset)
             )

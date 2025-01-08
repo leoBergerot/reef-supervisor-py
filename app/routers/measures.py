@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status, Securit
 from app.core.security import get_current_user
 from app.managers import MeasureManager
 from app.models import MeasureResponse, MeasureRequest
-from app.models.measure import MeasureListPaginateResponse, MeasureRequestValue
+from app.models.measure import MeasureListPaginateResponse, MeasureRequestPatch
 from app.repositories import TankRepository, MeasureRepository
 from app.schemas import User
 
@@ -33,7 +33,7 @@ def read(current_user: Annotated[User, Security(get_current_user, scopes=['USER'
 
 @router.patch("/{measure_id}", response_model=MeasureResponse, description="Update measure value")
 def updateValue(measure_id: int,
-                measure_request: MeasureRequestValue,
+                measure_request: MeasureRequestPatch,
                 current_user: Annotated[User, Security(get_current_user, scopes=["USER"])],
                 measure_repository: Annotated[MeasureRepository, Depends(MeasureRepository)],
                 measure_manager: Annotated[MeasureManager, Depends(MeasureManager)]):
