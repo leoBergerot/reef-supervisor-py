@@ -2,13 +2,15 @@ from decimal import Decimal
 from typing import Annotated, Any
 from pydantic import BaseModel, Field, field_validator, model_validator, ValidationError
 from pydantic_core import InitErrorDetails
+from datetime import datetime
 
 from app.repositories import ParameterRepository
 from app.schemas.timestampable import Timestampable
 
 
-class MeasureRequestValue(BaseModel):
+class MeasureRequestPatch(BaseModel):
     value: Annotated[Decimal, Field(decimal_places=2)]
+    created_at: Annotated[datetime | None, Field()] = None
 
 
 class MeasureRequest(BaseModel):
