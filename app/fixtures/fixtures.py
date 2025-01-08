@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.schemas.parameter import Parameter
 from sqlalchemy import MetaData
+import typer
 
 
 def clean_database(session: Session):
@@ -20,9 +21,10 @@ def confirm_and_load_fixtures(session: Session):
     """
     Confirm remove data
     """
-    confirmation = input(
-        "Do you want to clean the database before loading the fixtures (Don't accept in production)? (yes/no): ")
-    if confirmation.lower() in ["yes", "y"]:
+    confirmation = typer.confirm(
+        "Do you want to clean the database before loading the fixtures (Don't accept in production)?"
+    )
+    if confirmation:
         print("Cleaning the database...")
         clean_database(session)
         print("Database cleaned.")
