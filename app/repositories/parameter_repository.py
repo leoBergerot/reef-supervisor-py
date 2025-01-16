@@ -32,18 +32,11 @@ class ParameterRepository(DomainParameterRepository):
             return session.exec(query).all()
 
     def create_persist(self, parameter_request: ParameterRequest) -> ParameterDomain:
-        parameter = Parameter().from_application(parameter_request)
+        parameter = Parameter().from_core_request(parameter_request)
         with Session(engine) as session:
             session.add(parameter)
             session.commit()
             session.refresh(parameter)
-
-            # try:
-            #     self._update_user_preferences(parameter, session)
-            # except:
-            #     session.rollback()
-            #     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            #                         detail="Could not update user preference")
 
         return parameter
 

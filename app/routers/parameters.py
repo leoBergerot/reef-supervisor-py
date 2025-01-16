@@ -1,11 +1,11 @@
 from typing import Annotated, Type
 
-from fastapi import APIRouter, Depends, Security, HTTPException, Query
+from fastapi import APIRouter, Depends, Security, Query
 
 from app.core.security import get_current_user
-from app.core.use_cases.parameter import CreateParameterUseCase
+from app.core.controllers.parameter import CreateParameterUseCase
 from app.models import ParameterResponse, ParameterRequest
-from app.repositories import ParameterRepository
+from app.repositories import ParameterRepository, UserRepository
 from app.schemas import User
 
 router = APIRouter(
@@ -14,12 +14,12 @@ router = APIRouter(
 )
 
 
-create_parameter_use_case = CreateParameterUseCase(ParameterRepository())
+create_parameter_controller = CreateParameterUseCase(ParameterRepository(), UserRepository())
 
 @router.post("", response_model=ParameterResponse, description="Admin role required")
 def create(parameter_request: ParameterRequest,
            current_user: Annotated[User, Security(get_current_user, scopes=['ADMIN'])]):
-    return create_parameter_use_case.execute(parameter_request.to_application())
+    return create_parameter_controller.execute(parameter_request.to_core())
 
 
 # @router.put("/{parameter_id}", response_model=ParameterResponse, description="Admin role required")
