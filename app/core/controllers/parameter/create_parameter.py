@@ -16,7 +16,8 @@ class CreateParameterUseCase:
         users = self.user_repository.get_all()
 
         for user in users:
-            user.preferences.append(Preference(id=None, parameter=parameter, enabled=True, created_at= datetime.now(UTC), updated_at=datetime.now(UTC) ))
+            user.preferences.append(Preference(id=None, parameter=parameter, enabled=True, created_at=datetime.now(UTC),
+                                               updated_at=datetime.now(UTC)))
 
         self.user_repository.save_alls(users)
         return parameter
