@@ -3,7 +3,7 @@ from typing import Annotated, Type
 from fastapi import APIRouter, Depends, Security, Query, HTTPException
 
 from app.core.security import get_current_user
-from app.core.controllers.parameter import CreateParameterUseCase, UpdateParameterUseCase
+from app.core.controllers.parameter import CreateParameterUseCase, UpdateParameterUseCase, ListParameterUseCase
 from app.models import ParameterResponse, ParameterRequest
 from app.repositories import ParameterRepository, UserRepository
 from app.schemas import User
@@ -38,9 +38,11 @@ def update(parameter_id: int, parameter_request: ParameterRequest,
             )
 
 
+list_parameter_controller = ListParameterUseCase(ParameterRepository())
+
+
 @router.get("", description="Find parameter by ilike name and by ids", response_model=list[ParameterResponse])
 def read(parameter_repository: Annotated[ParameterRepository, Depends(ParameterRepository)],
          name: str | None = None,
          ids: Annotated[list[int] | None, Query()] = None):
-    parameters = parameter_repository.get_by_filter(name=name, ids=ids)
-    return [ParameterResponse.model_validate(parameter, from_attributes=True) for parameter in parameters]
+    return list_parameter_controller.execute(name, ids)

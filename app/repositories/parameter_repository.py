@@ -33,7 +33,7 @@ class ParameterRepository(DomainParameterRepository):
             if len(conditions) > 0:
                 query = query.filter(and_(*conditions))
 
-            return session.exec(query).all()
+            return [parameter.to_core() for parameter in session.exec(query).all()]
 
     def create_persist(self, parameter_request: ParameterRequest) -> ParameterDomain:
         parameter = Parameter().from_core_request(parameter_request)
