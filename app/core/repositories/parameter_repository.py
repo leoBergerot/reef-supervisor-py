@@ -6,7 +6,7 @@ class ParameterRepository:
     def get_all(self) -> list[Parameter]:
         raise NotImplementedError
 
-    def get_by_id(self, parameter_id: int) -> Parameter:
+    def get_by_id(self, parameter_id: int) -> None|Parameter:
         raise NotImplementedError
 
     def get_by_filter(self, name: str | None, ids: list[int] | None) -> list[Parameter]:
