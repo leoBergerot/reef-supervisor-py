@@ -1,11 +1,11 @@
 from typing import Annotated, Type
 
-from fastapi import APIRouter, Depends, Security, HTTPException, Query
+from fastapi import APIRouter, Depends, Security, Query, HTTPException
 
-from app.core.security import get_current_user, oauth2_scheme
-from app.managers import ParameterManager
+from app.core.security import get_current_user
+from app.core.controllers.parameter import CreateParameterUseCase, UpdateParameterUseCase
 from app.models import ParameterResponse, ParameterRequest
-from app.repositories import ParameterRepository
+from app.repositories import ParameterRepository, UserRepository
 from app.schemas import User
 
 router = APIRouter(
@@ -13,27 +13,29 @@ router = APIRouter(
     tags=["Parameters"],
 )
 
+create_parameter_controller = CreateParameterUseCase(ParameterRepository(), UserRepository())
+
 
 @router.post("", response_model=ParameterResponse, description="Admin role required")
 def create(parameter_request: ParameterRequest,
-           parameter_manager: Annotated[ParameterManager, Depends(ParameterManager)],
            current_user: Annotated[User, Security(get_current_user, scopes=['ADMIN'])]):
-    return ParameterResponse.model_validate(parameter_manager.create_persist(parameter_request), from_attributes=True)
+    return create_parameter_controller.execute(parameter_request.to_core())
+
+
+update_parameter_controller = UpdateParameterUseCase(ParameterRepository())
 
 
 @router.put("/{parameter_id}", response_model=ParameterResponse, description="Admin role required")
 def update(parameter_id: int, parameter_request: ParameterRequest,
-           parameter_manager: Annotated[ParameterManager, Depends(ParameterManager)],
-           current_user: Annotated[User, Security(get_current_user, scopes=['ADMIN'])],
-           parameter_repository: Annotated[ParameterRepository, Depends(ParameterRepository)]):
-    parameter = parameter_repository.get_by_id(parameter_id)
-    if parameter is None:
-        raise HTTPException(
-            status_code=404, detail="Parameter not found"
-        )
-
-    return ParameterResponse.model_validate(parameter_manager.update_persist(parameter, parameter_request),
-                                            from_attributes=True)
+           current_user: Annotated[User, Security(get_current_user, scopes=['ADMIN'])]):
+    try:
+        return update_parameter_controller.execute(parameter_id, parameter_request)
+    except Exception as e:
+        error = e.args
+        if 'status_code' in error[0]:
+            raise HTTPException(
+                status_code=error[0].get('status_code'), detail=error[0].get('detail')
+            )
 
 
 @router.get("", description="Find parameter by ilike name and by ids", response_model=list[ParameterResponse])
