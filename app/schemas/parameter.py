@@ -20,7 +20,21 @@ class Parameter(SQLModel, Timestampable, table=True):
 
         return self
 
+    def from_core(self, parameter: ParameterCore) -> Self:
+        self.id = parameter.id
+        self.name = parameter.name
+        self.sub_name = parameter.sub_name
+        self.need_value = parameter.need_value
+        self.created_at = parameter.created_at
+        self.updated_at = parameter.updated_at
+
+        return self
+
     def to_core(self) -> ParameterCore:
-        return ParameterCore(id=self.id, name=self.name,
-                             sub_name=self.sub_name,
-                             need_value=self.need_value, created_at=self.created_at, updated_at=self.updated_at)
+        return ParameterCore(
+            id=self.id,
+            name=self.name,
+            sub_name=self.sub_name,
+            need_value=self.need_value,
+            created_at=self.created_at,
+            updated_at=self.updated_at)
