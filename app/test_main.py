@@ -46,7 +46,7 @@ def test_user_creation():
     # check if preference it assigned to user
     user = user_repository.get_by_email(email)
     parameters = parameter_repository.get_all()
-    preferences = preference_repository.get_by_user(user)
+    preferences = preference_repository.get_by_user(user.to_core_no_relation())
     assert len(parameters) == len(preferences)
 
     # test user already register

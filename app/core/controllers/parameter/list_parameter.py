@@ -7,4 +7,4 @@ class ListParameterUseCase:
         self.parameter_repository = parameter_repository
 
     def execute(self, name: str, ids: list[int]) -> list[ParameterResponse]:
-        return [parameter.to_request_view() for parameter in self.parameter_repository.get_by_filter(name, ids)]
+        return [parameter.to_response_view() for parameter in self.parameter_repository.get_by_filter(name, ids)]

@@ -15,10 +15,6 @@ class UserRepository(UserRepositoryCore):
         with Session(engine) as session:
             return session.exec(select(User).filter(col(User.id) == user_id)).first()
 
-    def get_by_email(self, email: str) -> UserCore:
-        with Session(engine) as session:
-            return session.exec(select(User).filter(col(User.email) == email)).first()
-
     def is_email_unique(self, email: str, current_id: int | None = None) -> bool:
         with Session(engine) as session:
             conditions = [User.email == email]
@@ -28,9 +24,12 @@ class UserRepository(UserRepositoryCore):
                 select(User).filter(and_(*conditions))).first() is None
 
     def save_alls(self, users: list[User]):
-        print('SAVE ALLSSSS')
         with Session(engine) as session:
             for user in users:
                 user_app = (User().from_core(user))
                 session.merge(user_app)
                 session.commit()
+
+    def get_by_email(self, email: str) -> UserCore:
+        with Session(engine) as session:
+            return session.exec(select(User).filter(col(User.email) == email)).first()

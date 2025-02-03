@@ -1,4 +1,4 @@
-from typing import Annotated, Type
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Security, Query, HTTPException
 
@@ -42,7 +42,7 @@ list_parameter_controller = ListParameterUseCase(ParameterRepository())
 
 
 @router.get("", description="Find parameter by ilike name and by ids", response_model=list[ParameterResponse])
-def read(parameter_repository: Annotated[ParameterRepository, Depends(ParameterRepository)],
+def read(current_user: Annotated[User, Security(get_current_user, scopes=['USER'])],
          name: str | None = None,
-         ids: Annotated[list[int] | None, Query()] = None):
+         ids: Annotated[list[int] | None, Query()] = None, ):
     return list_parameter_controller.execute(name, ids)

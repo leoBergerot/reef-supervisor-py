@@ -12,7 +12,7 @@ class Parameter:
         self.created_at = created_at
         self.updated_at = updated_at
 
-    def to_request_view(self):
+    def to_response_view(self):
         return ParameterResponse(
             self.id,
             self.name,
