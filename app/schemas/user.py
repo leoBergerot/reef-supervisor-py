@@ -31,4 +31,6 @@ class User(SQLModel, Timestampable, table=True):
     def to_core(self) -> UserCore:
         return UserCore(id=self.id, email=self.email, password=self.password, preferences=[preference.to_core() for preference in self.preferences], created_at=self.created_at, updated_at=self.updated_at)
 
+    def to_core_no_relation(self) -> UserCore:
+        return UserCore(id=self.id, email=self.email, password=self.password,  created_at=self.created_at, updated_at=self.updated_at, preferences=[])
 

@@ -11,4 +11,4 @@ class UpdateParameterUseCase:
         if parameter is None:
             raise Exception({'status_code': 404, 'detail': "Parameter not found"})
 
-        return self.parameter_repository.update_persist(parameter, parameter_request).to_request_view()
+        return self.parameter_repository.update_persist(parameter, parameter_request).to_response_view()
