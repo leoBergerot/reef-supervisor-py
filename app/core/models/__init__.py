@@ -1,6 +1,6 @@
-from .parameter import ParameterRequest
-from .parameter import ParameterResponse
-from .prefrence import PreferenceRequest
-from .prefrence import PreferenceResponse
+from .parameter import ParameterRequest, ParameterResponse
+from .prefrence import PreferenceRequest, PreferenceResponse
+from .tank import TankRequest, TankResponse
 
-__all__ = ["ParameterRequest", "ParameterResponse", "PreferenceRequest", "PreferenceResponse"]
+__all__ = ["ParameterRequest", "ParameterResponse", "PreferenceRequest", "PreferenceResponse", "TankRequest",
+           "TankResponse"]
