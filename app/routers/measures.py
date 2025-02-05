@@ -51,7 +51,7 @@ def create(measure_request: MeasureRequest,
            current_user: Annotated[User, Security(get_current_user, scopes=['USER'])],
            tank_repository: Annotated[TankRepository, Depends(TankRepository)],
            measure_manager: Annotated[MeasureManager, Depends(MeasureManager)]):
-    if not tank_repository.is_tank_owned_by_user(measure_request.tank_id, current_user):
+    if not tank_repository.is_tank_owned_by_user(measure_request.tank_id, current_user.to_core_no_relation()):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Tank ID {measure_request.tank_id} does not belong to User ID {current_user.id}")
