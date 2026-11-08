@@ -1,10 +1,12 @@
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
-# load env file
-load_dotenv()
+APP_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(".env.local", override=True)
+load_dotenv(APP_DIR / ".env")
+load_dotenv(APP_DIR / ".env.local", override=True)
 
 
 class Settings:
