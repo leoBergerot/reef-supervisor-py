@@ -17,6 +17,7 @@ class User(SQLModel, Timestampable, table=True):
     password: str = Field()
     preferences: list[Preference] = Relationship(back_populates="user")
     scopes: list[str] = Field(sa_column=Column(JSON), default=["USER"])
+    is_active: bool = Field(default=True, nullable=False)
 
     def from_core(self, user: UserCore) -> Self:
         self.id = user.id
