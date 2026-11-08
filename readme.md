@@ -34,4 +34,20 @@ export ACCESS_TOKEN_EXPIRE_MINUTES="1440"
 docker compose -f docker-compose.prod.yaml up --build -d
 ```
 
-L’API écoute le port 80 de la machine. `SECRET_KEY` et `POSTGRES_PASSWORD` sont obligatoires.
+L’API écoute le port 80 de la machine. `SECRET_KEY` et `POSTGRES_PASSWORD` sont obligatoires. Les photos de bac sont stockées dans `UPLOAD_DIR` (par défaut `/data/uploads`).
+
+## Routes ajoutées
+
+| Appel | Méthode et chemin | Corps | Réponse |
+| --- | --- | --- | --- |
+| `requestAccountActivation` | `POST /account-activations` | `{ "email" }` | `{ "email", "token" }` |
+| `activateAccount` | `POST /account-activations/confirm` | `{ "token" }` | `{ "id", "email" }` |
+| `requestPasswordReset` | `POST /password-resets` | `{ "email" }` | `{ "id", "email", "token" }` |
+| `resetPassword` | `POST /password-resets/confirm` | `{ "id", "token", "password" }` | `{ "id", "email" }` |
+| `updateTank` | `PATCH /tanks/{id}` | `{ "name" }` + JWT | `{ "id", "name", "photo_url" }` |
+| `deleteTank` | `DELETE /tanks/{id}` | JWT | `204` |
+| `uploadTankPhoto` | `PATCH /tanks/{id}/photo` | champ `file` + JWT | `{ "id", "name", "photo_url" }` |
+| lecture photo | `GET /tanks/{id}/photo` | JWT | fichier |
+| `setMeasureTimestamp` | `PATCH /measures/{id}/timestamp` | `{ "created_at" }` + JWT | mesure |
+
+Les jetons d’activation et de réinitialisation sont renvoyés dans la réponse (pas d’envoi d’e-mail). Le fichier photo accepte png, gif, svg, jpeg et jpg.

@@ -13,6 +13,9 @@ services:
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
       DEBUG: "false"
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - reef-uploads:/data/uploads
     depends_on:
       database:
         condition: service_healthy
@@ -46,6 +49,7 @@ services:
 
 volumes:
   reef-postgres:
+  reef-uploads:
 
 networks:
   reef:
