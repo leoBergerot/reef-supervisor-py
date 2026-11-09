@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status, Securit
 from app.core.security import get_current_user
 from app.managers import MeasureManager
 from app.models import MeasureResponse, MeasureRequest
-from app.models.measure import MeasureListPaginateResponse, MeasureRequestPatch
+from app.models.measure import MeasureListPaginateResponse, MeasureRequestPatch, MeasureTimestampRequest
 from app.repositories import TankRepository, MeasureRepository
 from app.schemas import User
 
@@ -44,6 +44,22 @@ def updateValue(measure_id: int,
             detail=f"Measure ID {measure_id} does not belong to User ID {current_user.id}")
     return MeasureResponse.model_validate(measure_manager.updateValue(measure_request, measure).model_dump(),
                                           from_attributes=True)
+
+
+@router.patch("/{measure_id}/timestamp", response_model=MeasureResponse,
+              description="Store a date on a measure whose parameter has no numeric value")
+def update_timestamp(measure_id: int,
+                     body: MeasureTimestampRequest,
+                     current_user: Annotated[User, Security(get_current_user, scopes=["USER"])],
+                     measure_repository: Annotated[MeasureRepository, Depends(MeasureRepository)],
+                     measure_manager: Annotated[MeasureManager, Depends(MeasureManager)]):
+    measure = measure_repository.get_measure_by_id_and_user(measure_id, current_user)
+    if measure is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Measure ID {measure_id} does not belong to User ID {current_user.id}")
+    updated = measure_manager.update_timestamp(body.created_at, measure)
+    return MeasureResponse.model_validate(updated.model_dump(), from_attributes=True)
 
 
 @router.post("", response_model=MeasureResponse, description="Create measure link to user authenticated")

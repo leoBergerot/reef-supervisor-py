@@ -1,0 +1,21 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches:
+      - main
+      - cursor/modernize-api-0927
+      - cursor/api-account-tank-endpoints-0927
+  pull_request:
+    branches:
+      - main
+      - cursor/modernize-api-0927
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get code
+        uses: actions/checkout@v4
+      - name: Build production image
+        run: docker build --target production -t reef-supervisor-prod:latest .

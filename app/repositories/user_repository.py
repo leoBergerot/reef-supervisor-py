@@ -33,3 +33,27 @@ class UserRepository(UserRepositoryCore):
     def get_by_email(self, email: str) -> UserCore:
         with Session(engine) as session:
             return session.exec(select(User).filter(col(User.email) == email)).first()
+
+    def update_password(self, user_id: int, hashed_password: str) -> User | None:
+        with Session(engine) as session:
+            user = session.get(User, user_id)
+            if user is None:
+                return None
+            user.password = hashed_password
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+            session.expunge(user)
+            return user
+
+    def mark_active(self, user_id: int) -> User | None:
+        with Session(engine) as session:
+            user = session.get(User, user_id)
+            if user is None:
+                return None
+            user.is_active = True
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+            session.expunge(user)
+            return user

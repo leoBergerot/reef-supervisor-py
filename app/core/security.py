@@ -49,6 +49,8 @@ class Auth:
             return False
         if not verify_password(password, user.password):
             return False
+        if not user.is_active:
+            return False
         return user
 
 
@@ -92,3 +94,25 @@ def create_access_token(data: dict) -> str:
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+
+def _action_secret(purpose: str, password_hash: str | None = None) -> str:
+    if purpose == "password_reset":
+        return f"{settings.SECRET_KEY}:{password_hash}"
+    return settings.SECRET_KEY
+
+
+def create_action_token(purpose: str, user_id: int, email: str, password_hash: str | None = None) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=int(settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    payload = {"purpose": purpose, "user_id": user_id, "email": email, "exp": expire}
+    return jwt.encode(payload, _action_secret(purpose, password_hash), algorithm=ALGORITHM)
+
+
+def decode_action_token(token: str, purpose: str, password_hash: str | None = None) -> dict:
+    try:
+        payload = jwt.decode(token, _action_secret(purpose, password_hash), algorithms=[ALGORITHM])
+    except InvalidTokenError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
+    if payload.get("purpose") != purpose:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
+    return payload
