@@ -1,4 +1,4 @@
-from passlib.context import CryptContext
+import bcrypt
 from app.core.config import settings
 from pydantic import BaseModel
 from app.repositories.user_repository import UserRepository
@@ -11,7 +11,6 @@ from jwt.exceptions import InvalidTokenError
 import jwt
 
 ALGORITHM = "HS256"
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="token",
     scopes={"USER": "Basic user.", "ADMIN": "Admin User."},
@@ -29,11 +28,15 @@ class TokenData(BaseModel):
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    except ValueError:
+        return False
 
 
 class Auth:

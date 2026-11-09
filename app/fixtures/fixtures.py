@@ -13,6 +13,8 @@ def clean_database(session: Session):
     metadata = MetaData()
     metadata.reflect(bind=engine)
     for table in reversed(metadata.sorted_tables):
+        if table.name == "alembic_version":
+            continue
         session.execute(table.delete())
     session.commit()
 
