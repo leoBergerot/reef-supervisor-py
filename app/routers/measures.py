@@ -8,7 +8,7 @@ from app.core.security import get_current_user
 from app.managers import MeasureManager
 from app.models import MeasureResponse, MeasureRequest
 from app.models.measure import MeasureListPaginateResponse, MeasureRequestPatch, MeasureTimestampRequest
-from app.repositories import TankRepository, MeasureRepository
+from app.repositories import TankRepository, MeasureRepository, TankParameterRepository
 from app.schemas import User
 
 router = APIRouter(
@@ -71,6 +71,11 @@ def create(measure_request: MeasureRequest,
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Tank ID {measure_request.tank_id} does not belong to User ID {current_user.id}")
+    if not TankParameterRepository().is_enabled(measure_request.tank_id, measure_request.parameter_id):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"Parameter ID {measure_request.parameter_id} is not enabled for tank {measure_request.tank_id}",
+        )
     measure = measure_manager.create(measure_request)
 
     return MeasureResponse.model_validate(measure.model_dump(), from_attributes=True)

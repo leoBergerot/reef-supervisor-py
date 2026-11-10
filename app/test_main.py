@@ -124,13 +124,15 @@ def test_tanks(auth_token):
     }
 
     tank_name = "First tank"
-    response = client.post("/tanks", headers=headers, json={"name": tank_name})
+    response = client.post("/tanks", headers=headers, json={"name": tank_name, "water_type": "seawater"})
     assert response.status_code == 200
     assert response.json()["name"] == tank_name
+    assert response.json()["water_type"] == "seawater"
 
     response = client.get("/tanks", headers=headers)
     assert response.status_code == 200
     assert len(response.json()) == 1
+    assert response.json()[0]["water_type"] == "seawater"
 
 
 def test_update_parameter(auth_token_admin):
@@ -158,9 +160,11 @@ def test_create_measure(auth_token, auth_token_admin):
     response = client.get("/tanks", headers=headers)
     tank = response.json()[0]
 
-    response = client.get("/parameters", headers=headers)
+    response = client.get(f"/tanks/{tank['id']}/parameters", headers=headers)
     assert response.status_code == 200
-    parameters = response.json()
+    tank_parameters = response.json()
+    parameters = [item["parameter"] for item in tank_parameters if item["enabled"]]
+    assert parameters
     for parameter in parameters:
         measure = {
             "tank_id": tank['id'],
