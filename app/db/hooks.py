@@ -1,6 +1,8 @@
 from datetime import datetime, UTC
 from sqlalchemy import event
 from sqlmodel import SQLModel
+
+from app.schemas import Measure, Parameter, Preference, Tank, TankParameter, User  # noqa: F401
 from app.schemas.timestampable import Timestampable
 
 

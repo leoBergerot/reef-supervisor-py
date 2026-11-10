@@ -111,14 +111,16 @@ def test_tank_update_photo_and_delete():
     headers = {"Authorization": f"Bearer {_auth(email)}"}
     other_headers = {"Authorization": f"Bearer {_auth(other)}"}
 
-    created = client.post("/tanks", headers=headers, json={"name": "Reef"})
+    created = client.post("/tanks", headers=headers, json={"name": "Reef", "water_type": "seawater"})
     assert created.status_code == 200
     tank_id = created.json()["id"]
     assert created.json()["photo_url"] is None
+    assert created.json()["water_type"] == "seawater"
 
     renamed = client.patch(f"/tanks/{tank_id}", headers=headers, json={"name": "Lagoon"})
     assert renamed.status_code == 200
     assert renamed.json()["name"] == "Lagoon"
+    assert renamed.json()["water_type"] == "seawater"
     assert client.patch(f"/tanks/{tank_id}", headers=other_headers, json={"name": "Stolen"}).status_code == 404
     assert client.patch(f"/tanks/{tank_id}", headers=headers, json={"name": ""}).status_code == 422
 
@@ -158,10 +160,11 @@ def test_set_measure_timestamp_without_value():
     email = _email()
     _create_user(email)
     headers = {"Authorization": f"Bearer {_auth(email)}"}
-    tank_id = client.post("/tanks", headers=headers, json={"name": "Bare"}).json()["id"]
-    parameters = client.get("/parameters", headers=headers).json()
-    bare = parameters[0]
-    valued = next(parameter for parameter in parameters if parameter["id"] != bare["id"])
+    tank_id = client.post("/tanks", headers=headers, json={"name": "Bare", "water_type": "freshwater"}).json()["id"]
+    tank_params = client.get(f"/tanks/{tank_id}/parameters", headers=headers).json()
+    assert tank_params
+    bare = next(item["parameter"] for item in tank_params if item["parameter"]["name"] == "Water change")
+    valued = next(item["parameter"] for item in tank_params if item["parameter"]["name"] == "Temperature")
     previous_bare = bare["need_value"]
     previous_valued = valued["need_value"]
     _set_need_value(bare["id"], False)
