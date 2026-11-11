@@ -234,3 +234,42 @@ def test_enable_catalog_parameter_not_seeded():
         headers=headers,
         json={"tank_id": tank_id, "parameter_id": magnesium_id, "value": 1300},
     ).status_code == 200
+
+
+def test_reorder_tank_parameters_via_sort_order():
+    headers = _headers()
+    tank_id = client.post(
+        "/tanks",
+        headers=headers,
+        json={"name": "Ordered", "water_type": "seawater"},
+    ).json()["id"]
+    params = client.get(f"/tanks/{tank_id}/parameters", headers=headers).json()
+    assert len(params) >= 2
+    assert all("sort_order" in item for item in params)
+    first, second = params[0], params[1]
+    reordered = client.patch(
+        f"/tanks/{tank_id}/parameters",
+        headers=headers,
+        json={
+            "parameters": [
+                {
+                    "parameter_id": first["parameter"]["id"],
+                    "enabled": True,
+                    "sort_order": 1,
+                },
+                {
+                    "parameter_id": second["parameter"]["id"],
+                    "enabled": True,
+                    "sort_order": 0,
+                },
+            ]
+        },
+    )
+    assert reordered.status_code == 200, reordered.text
+    by_id = {item["parameter"]["id"]: item for item in reordered.json()}
+    assert by_id[first["parameter"]["id"]]["sort_order"] == 1
+    assert by_id[second["parameter"]["id"]]["sort_order"] == 0
+    listed = client.get(f"/tanks/{tank_id}/parameters", headers=headers).json()
+    enabled = [item for item in listed if item["enabled"]]
+    assert enabled[0]["parameter"]["id"] == second["parameter"]["id"]
+    assert enabled[1]["parameter"]["id"] == first["parameter"]["id"]

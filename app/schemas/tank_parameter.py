@@ -10,3 +10,4 @@ class TankParameter(SQLModel, Timestampable, table=True):
     tank_id: int = Field(index=True, foreign_key="tank.id")
     parameter_id: int = Field(index=True, foreign_key="parameter.id")
     enabled: bool = Field(default=True)
+    sort_order: int = Field(default=0)

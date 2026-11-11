@@ -52,6 +52,7 @@ def _tank_parameter_response(tank_parameter, parameter) -> TankParameterResponse
         id=tank_parameter.id,
         enabled=tank_parameter.enabled,
         is_custom=parameter.is_custom,
+        sort_order=getattr(tank_parameter, "sort_order", 0) or 0,
         parameter=ParameterResponse(
             id=parameter.id,
             name=parameter.name,
@@ -106,9 +107,19 @@ def patch_tank_parameters(
                     status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=f"Custom parameter {item.parameter_id} does not belong to this tank",
                 )
-            tank_parameter_repository.upsert_enabled(tank_id, item.parameter_id, item.enabled)
+            tank_parameter_repository.upsert_enabled(
+                tank_id,
+                item.parameter_id,
+                item.enabled,
+                sort_order=item.sort_order,
+            )
         else:
-            tank_parameter_repository.upsert_enabled(tank_id, item.parameter_id, item.enabled)
+            tank_parameter_repository.upsert_enabled(
+                tank_id,
+                item.parameter_id,
+                item.enabled,
+                sort_order=item.sort_order,
+            )
 
     rows = tank_parameter_repository.list_for_tank(tank_id)
     return [_tank_parameter_response(tank_parameter, parameter) for tank_parameter, parameter in rows]
@@ -127,20 +138,7 @@ def create_custom_tank_parameter(
     _owned_tank_or_404(tank_id, current_user)
     parameter = ParameterRepository().create_custom(body.name, body.unit)
     tank_parameter = TankParameterRepository().create(tank_id, parameter.id, enabled=True)
-    return TankParameterResponse(
-        id=tank_parameter.id,
-        enabled=tank_parameter.enabled,
-        is_custom=True,
-        parameter=ParameterResponse(
-            id=parameter.id,
-            name=parameter.name,
-            sub_name=parameter.sub_name,
-            need_value=parameter.need_value,
-            for_seawater=parameter.for_seawater,
-            for_freshwater=parameter.for_freshwater,
-            is_custom=True,
-        ),
-    )
+    return _tank_parameter_response(tank_parameter, parameter)
 
 
 @router.patch("/{tank_id}", response_model=TankResponse, description="Rename a tank owned by the authenticated user")
