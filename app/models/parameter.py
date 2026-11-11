@@ -1,5 +1,18 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.core.models.parameter import ParameterRequest as ParameterRequestCore
+
+
+class ParameterRange(BaseModel):
+    """Recommended numeric band for soft UI warnings (never blocks saves)."""
+
+    min: float
+    max: float
+    soft_min: float | None = None
+    soft_max: float | None = None
+
+
+class ParameterRangeEntry(ParameterRange):
+    name: str = Field(min_length=1)
 
 
 class ParameterRequest(BaseModel):
@@ -23,3 +36,5 @@ class ParameterRequest(BaseModel):
 class ParameterResponse(ParameterRequest):
     id: int
     is_custom: bool = False
+    # Optional recommended band for the caller's water type (additive; null when unknown).
+    range: ParameterRange | None = None
