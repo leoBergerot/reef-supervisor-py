@@ -1,4 +1,4 @@
-from sqlmodel import Session, select, col, and_
+from sqlmodel import Session, select, col, and_, func
 
 from app.db.session import engine
 from app.schemas import TankParameter, Parameter
@@ -11,7 +11,7 @@ class TankParameterRepository:
                 select(TankParameter, Parameter)
                 .join(Parameter, col(Parameter.id) == col(TankParameter.parameter_id))
                 .where(col(TankParameter.tank_id) == tank_id)
-                .order_by(col(TankParameter.id))
+                .order_by(col(TankParameter.sort_order), col(TankParameter.id))
             ).all()
             return list(rows)
 
@@ -30,25 +30,44 @@ class TankParameterRepository:
         row = self.get_for_tank_parameter(tank_id, parameter_id)
         return bool(row and row.enabled)
 
+    def _next_sort_order(self, session: Session, tank_id: int) -> int:
+        current = session.exec(
+            select(func.max(TankParameter.sort_order)).where(col(TankParameter.tank_id) == tank_id)
+        ).one()
+        return 0 if current is None else int(current) + 1
+
     def seed_for_tank(self, tank_id: int, parameter_ids: list[int], enabled: bool = True) -> None:
         if not parameter_ids:
             return
         with Session(engine) as session:
             existing = {
-                row.parameter_id
+                row.parameter_id: row
                 for row in session.exec(
                     select(TankParameter).where(col(TankParameter.tank_id) == tank_id)
                 ).all()
             }
+            next_order = self._next_sort_order(session, tank_id)
             for parameter_id in parameter_ids:
                 if parameter_id in existing:
                     continue
                 session.add(
-                    TankParameter(tank_id=tank_id, parameter_id=parameter_id, enabled=enabled)
+                    TankParameter(
+                        tank_id=tank_id,
+                        parameter_id=parameter_id,
+                        enabled=enabled,
+                        sort_order=next_order,
+                    )
                 )
+                next_order += 1
             session.commit()
 
-    def upsert_enabled(self, tank_id: int, parameter_id: int, enabled: bool) -> TankParameter:
+    def upsert_enabled(
+        self,
+        tank_id: int,
+        parameter_id: int,
+        enabled: bool,
+        sort_order: int | None = None,
+    ) -> TankParameter:
         with Session(engine) as session:
             row = session.exec(
                 select(TankParameter).where(
@@ -59,9 +78,16 @@ class TankParameterRepository:
                 )
             ).first()
             if row is None:
-                row = TankParameter(tank_id=tank_id, parameter_id=parameter_id, enabled=enabled)
+                row = TankParameter(
+                    tank_id=tank_id,
+                    parameter_id=parameter_id,
+                    enabled=enabled,
+                    sort_order=sort_order if sort_order is not None else self._next_sort_order(session, tank_id),
+                )
             else:
                 row.enabled = enabled
+                if sort_order is not None:
+                    row.sort_order = sort_order
             session.add(row)
             session.commit()
             session.refresh(row)
@@ -69,7 +95,12 @@ class TankParameterRepository:
 
     def create(self, tank_id: int, parameter_id: int, enabled: bool = True) -> TankParameter:
         with Session(engine) as session:
-            row = TankParameter(tank_id=tank_id, parameter_id=parameter_id, enabled=enabled)
+            row = TankParameter(
+                tank_id=tank_id,
+                parameter_id=parameter_id,
+                enabled=enabled,
+                sort_order=self._next_sort_order(session, tank_id),
+            )
             session.add(row)
             session.commit()
             session.refresh(row)
