@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 
 from app.core.controllers.tank import CreateTankUseCase, ListTankUseCase
 from app.core.security import get_current_user
+from app.defaults import resolve_default_range
 from app.models import (
     TankResponse,
     TankRequest,
@@ -13,6 +14,7 @@ from app.models import (
     TankParameterPatchRequest,
     CustomTankParameterRequest,
     ParameterResponse,
+    ParameterRange,
 )
 from app.repositories import TankRepository, TankParameterRepository, ParameterRepository
 from app.schemas import User
@@ -47,7 +49,19 @@ def _owned_tank_or_404(tank_id: int, current_user: User):
     return tank
 
 
-def _tank_parameter_response(tank_parameter, parameter) -> TankParameterResponse:
+def _parameter_range_for(parameter_name: str, water_type: str | None) -> ParameterRange | None:
+    band = resolve_default_range(parameter_name, water_type)
+    if not band:
+        return None
+    return ParameterRange(
+        min=band["min"],
+        max=band["max"],
+        soft_min=band.get("soft_min"),
+        soft_max=band.get("soft_max"),
+    )
+
+
+def _tank_parameter_response(tank_parameter, parameter, water_type: str | None = None) -> TankParameterResponse:
     return TankParameterResponse(
         id=tank_parameter.id,
         enabled=tank_parameter.enabled,
@@ -61,6 +75,7 @@ def _tank_parameter_response(tank_parameter, parameter) -> TankParameterResponse
             for_seawater=parameter.for_seawater,
             for_freshwater=parameter.for_freshwater,
             is_custom=parameter.is_custom,
+            range=_parameter_range_for(parameter.name, water_type),
         ),
     )
 
@@ -74,9 +89,12 @@ def list_tank_parameters(
     tank_id: int,
     current_user: Annotated[User, Security(get_current_user, scopes=["USER"])],
 ):
-    _owned_tank_or_404(tank_id, current_user)
+    tank = _owned_tank_or_404(tank_id, current_user)
     rows = TankParameterRepository().list_for_tank(tank_id)
-    return [_tank_parameter_response(tank_parameter, parameter) for tank_parameter, parameter in rows]
+    return [
+        _tank_parameter_response(tank_parameter, parameter, tank.water_type)
+        for tank_parameter, parameter in rows
+    ]
 
 
 @router.patch(
@@ -89,7 +107,7 @@ def patch_tank_parameters(
     body: TankParameterPatchRequest,
     current_user: Annotated[User, Security(get_current_user, scopes=["USER"])],
 ):
-    _owned_tank_or_404(tank_id, current_user)
+    tank = _owned_tank_or_404(tank_id, current_user)
     parameter_repository = ParameterRepository()
     tank_parameter_repository = TankParameterRepository()
 
@@ -122,7 +140,10 @@ def patch_tank_parameters(
             )
 
     rows = tank_parameter_repository.list_for_tank(tank_id)
-    return [_tank_parameter_response(tank_parameter, parameter) for tank_parameter, parameter in rows]
+    return [
+        _tank_parameter_response(tank_parameter, parameter, tank.water_type)
+        for tank_parameter, parameter in rows
+    ]
 
 
 @router.post(
@@ -135,10 +156,10 @@ def create_custom_tank_parameter(
     body: CustomTankParameterRequest,
     current_user: Annotated[User, Security(get_current_user, scopes=["USER"])],
 ):
-    _owned_tank_or_404(tank_id, current_user)
+    tank = _owned_tank_or_404(tank_id, current_user)
     parameter = ParameterRepository().create_custom(body.name, body.unit)
     tank_parameter = TankParameterRepository().create(tank_id, parameter.id, enabled=True)
-    return _tank_parameter_response(tank_parameter, parameter)
+    return _tank_parameter_response(tank_parameter, parameter, tank.water_type)
 
 
 @router.patch("/{tank_id}", response_model=TankResponse, description="Rename a tank owned by the authenticated user")

@@ -1,5 +1,5 @@
 from .user import UserRequest, UserResponse
-from .parameter import ParameterRequest, ParameterResponse
+from .parameter import ParameterRequest, ParameterResponse, ParameterRange, ParameterRangeEntry
 from .preference import PreferenceRequest, PreferenceResponse
 from .tank import TankRequest, TankResponse, TankRenameRequest
 from .tank_parameter import (
@@ -14,6 +14,8 @@ __all__ = [
     "UserResponse",
     "ParameterRequest",
     "ParameterResponse",
+    "ParameterRange",
+    "ParameterRangeEntry",
     "PreferenceRequest",
     "PreferenceResponse",
     "TankRequest",
