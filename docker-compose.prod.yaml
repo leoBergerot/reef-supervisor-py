@@ -1,0 +1,52 @@
+name: reef-supervisor-prod
+
+services:
+  api:
+    build:
+      context: .
+      target: production
+    container_name: reef-fast-api-prod
+    ports:
+      - "80:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://reef:${POSTGRES_PASSWORD}@database:5432/reef
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+      DEBUG: "false"
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/openapi.json')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - reef
+
+  database:
+    image: postgres:18
+    container_name: reef-database-prod
+    environment:
+      POSTGRES_DB: reef
+      POSTGRES_USER: reef
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - reef-postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reef -d reef"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    networks:
+      - reef
+
+volumes:
+  reef-postgres:
+
+networks:
+  reef:
+    driver: bridge
