@@ -9,13 +9,21 @@ class Tank(SQLModel, Timestampable, table=True):
     id: int | None = Field(primary_key=True)
     name: str = Field(index=True)
     user_id: int = Field(index=True, foreign_key="user.id")
+    water_type: str = Field(index=True)
     photo_path: str | None = Field(default=None, nullable=True)
 
     def from_request(self, tank_request: TankRequest):
         self.name = tank_request.name
+        self.water_type = tank_request.water_type
 
         return self
 
     def to_core(self):
-        return TankCore(id=self.id, name=self.name, created_at=self.created_at,
-                        updated_at=self.updated_at, photo_path=self.photo_path)
+        return TankCore(
+            id=self.id,
+            name=self.name,
+            water_type=self.water_type,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            photo_path=self.photo_path,
+        )
