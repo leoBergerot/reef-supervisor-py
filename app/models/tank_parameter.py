@@ -7,12 +7,14 @@ class TankParameterResponse(BaseModel):
     id: int
     enabled: bool
     is_custom: bool
+    sort_order: int = 0
     parameter: ParameterResponse
 
 
 class TankParameterUpdateItem(BaseModel):
     parameter_id: int
     enabled: bool
+    sort_order: int | None = None
 
 
 class TankParameterPatchRequest(BaseModel):
