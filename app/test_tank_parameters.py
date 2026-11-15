@@ -66,6 +66,64 @@ def test_alkalinity_catalog_is_numeric():
     assert alkalinity["need_value"] is True
 
 
+def test_water_change_catalog_is_numeric():
+    headers = _headers()
+    catalog = client.get("/parameters", headers=headers).json()
+    water_change = next(item for item in catalog if item["name"] == "Water change")
+    assert water_change["sub_name"] == "%"
+    assert water_change["need_value"] is True
+
+
+def test_salinity_density_keeps_three_decimals():
+    headers = _headers()
+    tank_id = client.post(
+        "/tanks",
+        headers=headers,
+        json={"name": "Density", "water_type": "seawater"},
+    ).json()["id"]
+    params = client.get(f"/tanks/{tank_id}/parameters", headers=headers).json()
+    salinity = next(item for item in params if item["parameter"]["name"] == "Salinity")
+    parameter_id = salinity["parameter"]["id"]
+
+    created = client.post(
+        "/measures",
+        headers=headers,
+        json={"tank_id": tank_id, "parameter_id": parameter_id, "value": 1.024},
+    )
+    assert created.status_code == 200, created.text
+    assert float(created.json()["value"]) == 1.024
+
+    patched = client.patch(
+        f"/measures/{created.json()['id']}",
+        headers=headers,
+        json={"value": 1.026},
+    )
+    assert patched.status_code == 200, patched.text
+    assert float(patched.json()["value"]) == 1.026
+
+
+def test_water_change_accepts_percent_value():
+    headers = _headers()
+    tank_id = client.post(
+        "/tanks",
+        headers=headers,
+        json={"name": "WC", "water_type": "freshwater"},
+    ).json()["id"]
+    params = client.get(f"/tanks/{tank_id}/parameters", headers=headers).json()
+    water_change = next(item for item in params if item["parameter"]["name"] == "Water change")
+    response = client.post(
+        "/measures",
+        headers=headers,
+        json={
+            "tank_id": tank_id,
+            "parameter_id": water_change["parameter"]["id"],
+            "value": 15,
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert float(response.json()["value"]) == 15
+
+
 def test_create_tank_requires_water_type():
     headers = _headers()
     response = client.post("/tanks", headers=headers, json={"name": "No type"})
