@@ -53,7 +53,7 @@ def load_fixtures(session: Session):
         Parameter(name="Salinity", sub_name="Density", need_value=True, for_seawater=True, for_freshwater=False),
         Parameter(name="Power of hydrogen", sub_name="pH", need_value=True, for_seawater=False, for_freshwater=True),
         Parameter(name="Nitrite", sub_name="No2", need_value=True, for_seawater=False, for_freshwater=True),
-        Parameter(name="Water change", sub_name="%", need_value=False, for_seawater=False, for_freshwater=True),
+        Parameter(name="Water change", sub_name="%", need_value=True, for_seawater=False, for_freshwater=True),
     ]
 
     for parameter in parameters:
