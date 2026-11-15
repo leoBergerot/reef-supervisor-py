@@ -10,11 +10,14 @@ services:
       - "8080:8000"
     volumes:
       - .:/app
+      - reef-uploads:/data/uploads
     environment:
       DATABASE_URL: postgresql+psycopg://reef:reef@database:5432/reef
       SECRET_KEY: dev-only-change-me-not-for-production
       ACCESS_TOKEN_EXPIRE_MINUTES: "1440"
       DEBUG: "true"
+      UPLOAD_DIR: /data/uploads
+      KEEP_ROOT: "true"
     depends_on:
       database:
         condition: service_healthy
@@ -48,6 +51,7 @@ services:
 
 volumes:
   reef-postgres:
+  reef-uploads:
 
 networks:
   reef:

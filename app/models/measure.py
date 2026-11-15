@@ -13,6 +13,10 @@ class MeasureRequestPatch(BaseModel):
     created_at: Annotated[datetime | None, Field()] = None
 
 
+class MeasureTimestampRequest(BaseModel):
+    created_at: datetime
+
+
 class MeasureRequest(BaseModel):
     parameter_id: int
     value: Annotated[Decimal | None, Field()] = None
