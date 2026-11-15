@@ -29,13 +29,14 @@ update_parameter_controller = UpdateParameterUseCase(ParameterRepository())
 def update(parameter_id: int, parameter_request: ParameterRequest,
            current_user: Annotated[User, Security(get_current_user, scopes=['ADMIN'])]):
     try:
-        return update_parameter_controller.execute(parameter_id, parameter_request)
+        return update_parameter_controller.execute(parameter_id, parameter_request.to_core())
     except Exception as e:
         error = e.args
-        if 'status_code' in error[0]:
+        if error and isinstance(error[0], dict) and 'status_code' in error[0]:
             raise HTTPException(
                 status_code=error[0].get('status_code'), detail=error[0].get('detail')
             )
+        raise
 
 
 list_parameter_controller = ListParameterUseCase(ParameterRepository())

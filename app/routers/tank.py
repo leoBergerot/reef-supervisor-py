@@ -5,8 +5,16 @@ from fastapi.responses import FileResponse
 
 from app.core.controllers.tank import CreateTankUseCase, ListTankUseCase
 from app.core.security import get_current_user
-from app.models import TankResponse, TankRequest
-from app.repositories import TankRepository
+from app.models import (
+    TankResponse,
+    TankRequest,
+    TankRenameRequest,
+    TankParameterResponse,
+    TankParameterPatchRequest,
+    CustomTankParameterRequest,
+    ParameterResponse,
+)
+from app.repositories import TankRepository, TankParameterRepository, ParameterRepository
 from app.schemas import User
 from app.storage import photo_media_type, save_tank_photo
 
@@ -39,8 +47,104 @@ def _owned_tank_or_404(tank_id: int, current_user: User):
     return tank
 
 
+def _tank_parameter_response(tank_parameter, parameter) -> TankParameterResponse:
+    return TankParameterResponse(
+        id=tank_parameter.id,
+        enabled=tank_parameter.enabled,
+        is_custom=parameter.is_custom,
+        parameter=ParameterResponse(
+            id=parameter.id,
+            name=parameter.name,
+            sub_name=parameter.sub_name,
+            need_value=parameter.need_value,
+            for_seawater=parameter.for_seawater,
+            for_freshwater=parameter.for_freshwater,
+            is_custom=parameter.is_custom,
+        ),
+    )
+
+
+@router.get(
+    "/{tank_id}/parameters",
+    response_model=list[TankParameterResponse],
+    description="List parameters configured for a tank (catalog defaults and customs)",
+)
+def list_tank_parameters(
+    tank_id: int,
+    current_user: Annotated[User, Security(get_current_user, scopes=["USER"])],
+):
+    _owned_tank_or_404(tank_id, current_user)
+    rows = TankParameterRepository().list_for_tank(tank_id)
+    return [_tank_parameter_response(tank_parameter, parameter) for tank_parameter, parameter in rows]
+
+
+@router.patch(
+    "/{tank_id}/parameters",
+    response_model=list[TankParameterResponse],
+    description="Enable or disable catalog/custom parameters for a tank (upsert for catalog)",
+)
+def patch_tank_parameters(
+    tank_id: int,
+    body: TankParameterPatchRequest,
+    current_user: Annotated[User, Security(get_current_user, scopes=["USER"])],
+):
+    _owned_tank_or_404(tank_id, current_user)
+    parameter_repository = ParameterRepository()
+    tank_parameter_repository = TankParameterRepository()
+
+    for item in body.parameters:
+        parameter = parameter_repository.get_by_id(item.parameter_id)
+        if parameter is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"Unknown parameter id: {item.parameter_id}",
+            )
+        if parameter.is_custom:
+            existing = tank_parameter_repository.get_for_tank_parameter(tank_id, item.parameter_id)
+            if existing is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail=f"Custom parameter {item.parameter_id} does not belong to this tank",
+                )
+            tank_parameter_repository.upsert_enabled(tank_id, item.parameter_id, item.enabled)
+        else:
+            tank_parameter_repository.upsert_enabled(tank_id, item.parameter_id, item.enabled)
+
+    rows = tank_parameter_repository.list_for_tank(tank_id)
+    return [_tank_parameter_response(tank_parameter, parameter) for tank_parameter, parameter in rows]
+
+
+@router.post(
+    "/{tank_id}/parameters/custom",
+    response_model=TankParameterResponse,
+    description="Create a custom numeric parameter for a tank",
+)
+def create_custom_tank_parameter(
+    tank_id: int,
+    body: CustomTankParameterRequest,
+    current_user: Annotated[User, Security(get_current_user, scopes=["USER"])],
+):
+    _owned_tank_or_404(tank_id, current_user)
+    parameter = ParameterRepository().create_custom(body.name, body.unit)
+    tank_parameter = TankParameterRepository().create(tank_id, parameter.id, enabled=True)
+    return TankParameterResponse(
+        id=tank_parameter.id,
+        enabled=tank_parameter.enabled,
+        is_custom=True,
+        parameter=ParameterResponse(
+            id=parameter.id,
+            name=parameter.name,
+            sub_name=parameter.sub_name,
+            need_value=parameter.need_value,
+            for_seawater=parameter.for_seawater,
+            for_freshwater=parameter.for_freshwater,
+            is_custom=True,
+        ),
+    )
+
+
 @router.patch("/{tank_id}", response_model=TankResponse, description="Rename a tank owned by the authenticated user")
-def update(tank_id: int, tank_request: TankRequest,
+def update(tank_id: int, tank_request: TankRenameRequest,
            current_user: Annotated[User, Security(get_current_user, scopes=["USER"])]):
     tank = TankRepository().update_name(tank_id, current_user.to_core_no_relation(), tank_request.name)
     if tank is None:
