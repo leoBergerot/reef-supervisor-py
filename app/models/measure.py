@@ -9,7 +9,7 @@ from app.schemas.timestampable import Timestampable
 
 
 class MeasureRequestPatch(BaseModel):
-    value: Annotated[Decimal, Field(decimal_places=2)]
+    value: Annotated[Decimal, Field(max_digits=12, decimal_places=4)]
     created_at: Annotated[datetime | None, Field()] = None
 
 
