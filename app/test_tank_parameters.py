@@ -58,6 +58,14 @@ def _headers() -> dict:
     return {"Authorization": f"Bearer {_auth(email)}"}
 
 
+def test_alkalinity_catalog_is_numeric():
+    headers = _headers()
+    catalog = client.get("/parameters", headers=headers).json()
+    alkalinity = next(item for item in catalog if item["name"] == "Alkalinity")
+    assert alkalinity["sub_name"] == "KH"
+    assert alkalinity["need_value"] is True
+
+
 def test_create_tank_requires_water_type():
     headers = _headers()
     response = client.post("/tanks", headers=headers, json={"name": "No type"})
