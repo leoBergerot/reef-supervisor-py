@@ -281,3 +281,53 @@ def test_reorder_tank_parameters_via_sort_order():
     enabled = [item for item in listed if item["enabled"]]
     assert enabled[0]["parameter"]["id"] == second["parameter"]["id"]
     assert enabled[1]["parameter"]["id"] == first["parameter"]["id"]
+
+
+def test_parameter_ranges_endpoint_by_water_type():
+    headers = _headers()
+
+    seawater = client.get("/parameters/ranges", headers=headers, params={"water_type": "seawater"})
+    assert seawater.status_code == 200, seawater.text
+    seawater_by_name = {item["name"]: item for item in seawater.json()}
+    assert seawater_by_name["Calcium"]["min"] == 380
+    assert seawater_by_name["Calcium"]["max"] == 450
+    assert seawater_by_name["Salinity"]["min"] == 1.024
+    assert seawater_by_name["Salinity"]["max"] == 1.026
+    assert seawater_by_name["Salinity"]["soft_min"] == 1.022
+    assert "Nitrite" not in seawater_by_name or seawater_by_name["Nitrite"]["max"] <= 0.05
+
+    freshwater = client.get("/parameters/ranges", headers=headers, params={"water_type": "freshwater"})
+    assert freshwater.status_code == 200, freshwater.text
+    freshwater_by_name = {item["name"]: item for item in freshwater.json()}
+    assert freshwater_by_name["Nitrite"]["max"] == 0.1
+    assert freshwater_by_name["Power of hydrogen"]["min"] == 6.5
+    assert "Calcium" in freshwater_by_name
+    assert "Magnesium" not in freshwater_by_name
+
+
+def test_tank_parameters_include_default_ranges():
+    headers = _headers()
+    tank_id = client.post(
+        "/tanks",
+        headers=headers,
+        json={"name": "Ranges", "water_type": "seawater"},
+    ).json()["id"]
+    params = client.get(f"/tanks/{tank_id}/parameters", headers=headers).json()
+    calcium = next(item for item in params if item["parameter"]["name"] == "Calcium")
+    assert calcium["parameter"]["range"] == {
+        "min": 380.0,
+        "max": 450.0,
+        "soft_min": None,
+        "soft_max": None,
+    }
+    salinity = next(item for item in params if item["parameter"]["name"] == "Salinity")
+    assert salinity["parameter"]["range"]["min"] == 1.024
+    assert salinity["parameter"]["range"]["soft_min"] == 1.022
+
+    catalog = client.get("/parameters", headers=headers, params={"water_type": "seawater"}).json()
+    catalog_calcium = next(item for item in catalog if item["name"] == "Calcium")
+    assert catalog_calcium["range"]["min"] == 380.0
+
+    bare = client.get("/parameters", headers=headers).json()
+    bare_calcium = next(item for item in bare if item["name"] == "Calcium")
+    assert bare_calcium["range"] is None
