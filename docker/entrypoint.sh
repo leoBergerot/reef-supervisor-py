@@ -35,4 +35,13 @@ PY
 cd /app/app
 alembic upgrade head
 cd /app
+
+upload_dir="${UPLOAD_DIR:-/data/uploads}"
+mkdir -p "$upload_dir"
+if [ "$(id -u)" = "0" ]; then
+  chown app:app "$upload_dir" 2>/dev/null || chmod 777 "$upload_dir"
+fi
+if [ "$(id -u)" = "0" ] && [ "${KEEP_ROOT:-false}" != "true" ]; then
+  exec runuser -u app -- "$@"
+fi
 exec "$@"
