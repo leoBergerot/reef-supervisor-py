@@ -1,10 +1,11 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Security, Query, HTTPException
+from fastapi import APIRouter, Security, Query, HTTPException
 
 from app.core.security import get_current_user
 from app.core.controllers.parameter import CreateParameterUseCase, UpdateParameterUseCase, ListParameterUseCase
-from app.models import ParameterResponse, ParameterRequest
+from app.defaults import list_default_ranges, resolve_default_range
+from app.models import ParameterResponse, ParameterRequest, ParameterRange, ParameterRangeEntry
 from app.repositories import ParameterRepository, UserRepository
 from app.schemas import User
 
@@ -42,8 +43,47 @@ def update(parameter_id: int, parameter_request: ParameterRequest,
 list_parameter_controller = ListParameterUseCase(ParameterRepository())
 
 
+def _to_parameter_response(parameter, water_type: str | None = None) -> ParameterResponse:
+    band = resolve_default_range(parameter.name, water_type) if water_type else None
+    return ParameterResponse(
+        id=parameter.id,
+        name=parameter.name,
+        sub_name=parameter.sub_name,
+        need_value=parameter.need_value,
+        for_seawater=getattr(parameter, "for_seawater", True),
+        for_freshwater=getattr(parameter, "for_freshwater", True),
+        is_custom=getattr(parameter, "is_custom", False),
+        range=(
+            ParameterRange(
+                min=band["min"],
+                max=band["max"],
+                soft_min=band.get("soft_min"),
+                soft_max=band.get("soft_max"),
+            )
+            if band
+            else None
+        ),
+    )
+
+
+@router.get(
+    "/ranges",
+    response_model=list[ParameterRangeEntry],
+    description="Default recommended min/max bands by water type (display warnings only)",
+)
+def read_ranges(
+    current_user: Annotated[User, Security(get_current_user, scopes=["USER"])],
+    water_type: Annotated[Literal["seawater", "freshwater"], Query()] = "seawater",
+):
+    return [ParameterRangeEntry(**row) for row in list_default_ranges(water_type)]
+
+
 @router.get("", description="Find parameter by ilike name and by ids", response_model=list[ParameterResponse])
-def read(current_user: Annotated[User, Security(get_current_user, scopes=['USER'])],
-         name: str | None = None,
-         ids: Annotated[list[int] | None, Query()] = None, ):
-    return list_parameter_controller.execute(name, ids)
+def read(
+    current_user: Annotated[User, Security(get_current_user, scopes=["USER"])],
+    name: str | None = None,
+    ids: Annotated[list[int] | None, Query()] = None,
+    water_type: Annotated[Literal["seawater", "freshwater"] | None, Query()] = None,
+):
+    parameters = list_parameter_controller.execute(name, ids)
+    return [_to_parameter_response(parameter, water_type) for parameter in parameters]
