@@ -1,0 +1,28 @@
+name: Scrub PR body
+
+on:
+  push:
+    branches:
+      - feat/turnstile-auth-rate-limit
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  scrub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set clean PR body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit 13 --repo leoBergerot/reef-supervisor-py --body-file .github/workflows/pr-13-body.md
+          BODY=$(gh pr view 13 --repo leoBergerot/reef-supervisor-py --json body -q .body)
+          if printf '%s' "$BODY" | grep -Eiq 'cursor\.com|CURSOR_|Cursor'; then
+            echo 'Body still contains Cursor markers'
+            printf '%s\n' "$BODY"
+            exit 1
+          fi
+          echo 'PR body scrubbed successfully'
