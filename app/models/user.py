@@ -9,3 +9,9 @@ class UserResponse(BaseModel):
 class UserRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class UserCreateRequest(UserRequest):
+    """Registration body. turnstileToken is required when TURNSTILE_ENABLED=true."""
+
+    turnstileToken: str | None = None

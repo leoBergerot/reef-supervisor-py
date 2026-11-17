@@ -12,6 +12,7 @@ docker compose up --build
 - Postgres : `localhost:5432`, utilisateur `reef`, mot de passe `reef`, base `reef`
 - Le code est monté dans le conteneur et Uvicorn recharge à chaud
 - Secret local uniquement : `SECRET_KEY=dev-only-change-me-not-for-production`
+- Turnstile local : `TURNSTILE_ENABLED=false` (vérification désactivée). Pour tester avec Cloudflare, utilisez les [clés de test](https://developers.cloudflare.com/turnstile/troubleshooting/testing/) et `TURNSTILE_ENABLED=true`.
 
 ```bash
 docker compose exec api pytest -s
@@ -31,10 +32,23 @@ Image multi-étapes, cible `production` : dépendances installées dans l’imag
 export SECRET_KEY="$(openssl rand -hex 32)"
 export POSTGRES_PASSWORD="change-me"
 export ACCESS_TOKEN_EXPIRE_MINUTES="1440"
+export TURNSTILE_ENABLED=true
+export TURNSTILE_SECRET_KEY="your-cloudflare-turnstile-secret"
 docker compose -f docker-compose.prod.yaml up --build -d
 ```
 
 L’API écoute le port 80 de la machine. `SECRET_KEY` et `POSTGRES_PASSWORD` sont obligatoires. Les photos de bac sont stockées dans `UPLOAD_DIR` (par défaut `/data/uploads`).
+
+### Auth anti-bot (Turnstile + rate limit)
+
+| Variable | Rôle |
+| --- | --- |
+| `TURNSTILE_ENABLED` | `true` pour exiger et vérifier le token Cloudflare Turnstile sur `POST /token` et `POST /users` ; `false` pour le skip (local/dev) |
+| `TURNSTILE_SECRET_KEY` | Secret Turnstile (API only, jamais exposé au frontend) |
+
+- `POST /token` : champ formulaire supplémentaire `turnstileToken` (avec `username` / `password` OAuth2).
+- `POST /users` : champ JSON `turnstileToken` sur le corps d’inscription.
+- Rate limit in-memory : ~10 requêtes / minute / IP sur ces deux routes uniquement (IP via `CF-Connecting-IP`, sinon `X-Forwarded-For`, sinon peer socket).
 
 ## Routes ajoutées
 

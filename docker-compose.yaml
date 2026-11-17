@@ -18,6 +18,8 @@ services:
       DEBUG: "true"
       UPLOAD_DIR: /data/uploads
       KEEP_ROOT: "true"
+      TURNSTILE_ENABLED: "false"
+      TURNSTILE_SECRET_KEY: ""
     depends_on:
       database:
         condition: service_healthy
