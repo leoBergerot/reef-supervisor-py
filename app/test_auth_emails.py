@@ -105,7 +105,7 @@ def test_forgot_password_happy_path_and_non_enumeration(capture_auth_emails):
     capture_auth_emails["reset"].clear()
 
     unknown = client.post("/forgot-password", json={"email": "nobody@reefsupervisor.fr"})
-    known = client.post("/password-resets", json={"email": email})
+    known = client.post("/forgot-password", json={"email": email})
     assert unknown.status_code == 200
     assert known.status_code == 200
     assert unknown.json() == known.json()
@@ -124,6 +124,7 @@ def test_forgot_password_happy_path_and_non_enumeration(capture_auth_emails):
     )
     assert recovered.status_code == 200
     assert recovered.json()["email"] == email
+    assert "token" not in recovered.json()
     login = client.post("/token", data={"username": email, "password": "newpass1"})
     assert login.status_code == 200
 
@@ -144,9 +145,15 @@ def test_register_sends_activation_email_without_token(capture_auth_emails):
     assert client.post("/token", data={"username": email, "password": "test"}).status_code == 200
 
 
-def test_password_reset_requires_turnstile_when_enabled(monkeypatch):
+def test_forgot_and_recover_require_turnstile_when_enabled(monkeypatch):
     monkeypatch.setattr(settings, "TURNSTILE_ENABLED", True)
     monkeypatch.setattr(settings, "TURNSTILE_SECRET_KEY", "test-secret")
-    response = client.post("/password-resets", json={"email": "a@b.c"})
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Turnstile token required"
+    forgot = client.post("/forgot-password", json={"email": "a@b.c"})
+    assert forgot.status_code == 400
+    assert forgot.json()["detail"] == "Turnstile token required"
+    recover = client.post(
+        "/recover-password",
+        json={"id": 1, "token": "x", "password": "newpass1"},
+    )
+    assert recover.status_code == 400
+    assert recover.json()["detail"] == "Turnstile token required"

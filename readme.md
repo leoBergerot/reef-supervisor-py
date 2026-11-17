@@ -53,7 +53,7 @@ L’API écoute le port 80 de la machine. `SECRET_KEY` et `POSTGRES_PASSWORD` so
 | `TURNSTILE_SECRET_KEY` | Secret Turnstile (API only, jamais exposé au frontend) |
 
 - `POST /token` : champ formulaire supplémentaire `turnstileToken` (avec `username` / `password` OAuth2).
-- `POST /users`, `POST /account-activations`, `POST /password-resets` (et alias `POST /forgot-password`) : champ JSON `turnstileToken`.
+- `POST /users`, `POST /account-activations`, `POST /forgot-password`, `POST /recover-password` : champ JSON `turnstileToken`.
 - Rate limit in-memory : ~10 requêtes / minute / IP sur ces routes (IP via `CF-Connecting-IP`, sinon `X-Forwarded-For`, sinon peer socket).
 
 ### Email (Mailjet / Maildev)
@@ -76,8 +76,8 @@ Local Compose uses `MAIL_DRIVER=smtp` and the `maildev` service. Open http://loc
 | --- | --- | --- | --- |
 | `requestAccountActivation` | `POST /account-activations` | `{ "email", "turnstileToken?" }` | `{ "detail" }` (email sent if account exists; no token) |
 | `activateAccount` | `POST /account-activations/confirm` | `{ "token" }` | `{ "id", "email" }` |
-| `requestPasswordReset` | `POST /password-resets` (alias `POST /forgot-password`) | `{ "email", "turnstileToken?" }` | `{ "detail" }` (non-enumerating) |
-| `resetPassword` | `POST /password-resets/confirm` (alias `POST /recover-password`) | `{ "id", "token", "password" }` | `{ "id", "email" }` |
+| `requestPasswordReset` | `POST /forgot-password` | `{ "email", "turnstileToken?" }` | `{ "detail" }` (non-enumerating; no token) |
+| `resetPassword` | `POST /recover-password` | `{ "id", "token", "password", "turnstileToken?" }` | `{ "id", "email" }` |
 | `updateTank` | `PATCH /tanks/{id}` | `{ "name" }` + JWT | `{ "id", "name", "photo_url" }` |
 | `deleteTank` | `DELETE /tanks/{id}` | JWT | `204` |
 | `uploadTankPhoto` | `PATCH /tanks/{id}/photo` | champ `file` + JWT | `{ "id", "name", "photo_url" }` |

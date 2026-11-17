@@ -17,6 +17,9 @@ class ActivationConfirmRequest(BaseModel):
 
 
 class PasswordResetConfirmRequest(BaseModel):
+    """Recover-password body. turnstileToken is required when TURNSTILE_ENABLED=true."""
+
     id: int
     token: str = Field(min_length=1)
     password: str = Field(min_length=1)
+    turnstileToken: str | None = None

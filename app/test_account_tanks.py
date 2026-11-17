@@ -4,6 +4,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
+from app.core import rate_limit as rate_limit_module
 from app.db.session import engine
 from app.fixtures.fixtures import load_fixtures
 from app.main import app
@@ -71,13 +72,13 @@ def test_account_activation_and_password_reset(capture_auth_emails):
     capture_auth_emails["activation"].clear()
     capture_auth_emails["reset"].clear()
 
-    missing = client.post("/password-resets", json={"email": "missing@reefsupervisor.fr"})
+    missing = client.post("/forgot-password", json={"email": "missing@reefsupervisor.fr"})
     assert missing.status_code == 200
     assert "token" not in missing.json()
     assert missing.json()["detail"]
     assert capture_auth_emails["reset"] == []
 
-    reset = client.post("/password-resets", json={"email": email})
+    reset = client.post("/forgot-password", json={"email": email})
     assert reset.status_code == 200
     assert "token" not in reset.json()
     assert reset.json()["detail"] == missing.json()["detail"]
@@ -87,18 +88,19 @@ def test_account_activation_and_password_reset(capture_auth_emails):
     user_id = reset_payload["user_id"]
     token = reset_payload["token"]
 
-    assert client.post("/password-resets/confirm", json={
+    rate_limit_module.auth_rate_limiter.reset()
+    assert client.post("/recover-password", json={
         "id": user_id,
         "token": "not-a-token",
         "password": "replaced",
     }).status_code == 400
-    assert client.post("/password-resets/confirm", json={
+    assert client.post("/recover-password", json={
         "id": user_id + 9999,
         "token": token,
         "password": "replaced",
     }).status_code == 400
 
-    changed = client.post("/password-resets/confirm", json={
+    changed = client.post("/recover-password", json={
         "id": str(user_id),
         "token": token,
         "password": "replaced",
@@ -107,7 +109,7 @@ def test_account_activation_and_password_reset(capture_auth_emails):
     assert changed.json()["id"] == user_id
     assert client.post("/token", data={"username": email, "password": "test"}).status_code == 401
     assert _auth(email, "replaced")
-    assert client.post("/password-resets/confirm", json={
+    assert client.post("/recover-password", json={
         "id": user_id,
         "token": token,
         "password": "again",

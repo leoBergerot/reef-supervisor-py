@@ -58,8 +58,8 @@ def activate_account(body: ActivationConfirmRequest):
     return UserResponse(id=activated.id, email=activated.email)
 
 
-@router.post("/password-resets", response_model=MessageResponse)
-@router.post("/forgot-password", response_model=MessageResponse, include_in_schema=False)
+@router.post("/forgot-password", response_model=MessageResponse)
+@router.post("/password-resets", response_model=MessageResponse, include_in_schema=False)
 def request_password_reset(
         request: Request,
         body: EmailRequest,
@@ -81,9 +81,14 @@ def request_password_reset(
     return MessageResponse(detail=PASSWORD_RESET_ACK)
 
 
-@router.post("/password-resets/confirm", response_model=UserResponse)
-@router.post("/recover-password", response_model=UserResponse, include_in_schema=False)
-def reset_password(body: PasswordResetConfirmRequest):
+@router.post("/recover-password", response_model=UserResponse)
+@router.post("/password-resets/confirm", response_model=UserResponse, include_in_schema=False)
+def reset_password(
+        request: Request,
+        body: PasswordResetConfirmRequest,
+        _rate_limit: Annotated[None, Depends(rate_limit_auth)] = None,
+):
+    verify_turnstile_token(body.turnstileToken, get_client_ip(request))
     repository = UserRepository()
     user = repository.get_by_id(body.id)
     if user is None:
