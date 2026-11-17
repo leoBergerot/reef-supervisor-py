@@ -4,6 +4,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
+from app.core import rate_limit as rate_limit_module
 from app.db.session import engine
 from app.fixtures.fixtures import load_fixtures
 from app.main import app
@@ -22,9 +23,19 @@ def _auth(email: str, password: str = "test") -> str:
     return response.json()["access_token"]
 
 
-def _create_user(email: str, password: str = "test") -> dict:
+def _activate(email: str) -> None:
+    with Session(engine) as session:
+        user = session.exec(select(User).where(User.email == email)).one()
+        user.is_active = True
+        session.add(user)
+        session.commit()
+
+
+def _create_user(email: str, password: str = "test", *, activate: bool = True) -> dict:
     response = client.post("/users", json={"email": email, "password": password})
     assert response.status_code == 200, response.text
+    if activate:
+        _activate(email)
     return response.json()
 
 
@@ -42,26 +53,15 @@ def _set_need_value(parameter_id: int, need_value: bool) -> None:
         session.commit()
 
 
-def test_account_activation_and_password_reset():
+def test_account_activation_and_password_reset(capture_auth_emails):
     email = _email()
-    _create_user(email)
-    _auth(email)
-
-    inactive = client.post("/token", data={"username": email, "password": "wrong"})
-    assert inactive.status_code == 401
-
-    with Session(engine) as session:
-        user = session.exec(select(User).where(User.email == email)).one()
-        user.is_active = False
-        session.add(user)
-        session.commit()
-
+    created = _create_user(email, activate=False)
+    assert "token" not in created
     assert client.post("/token", data={"username": email, "password": "test"}).status_code == 401
 
-    requested = client.post("/account-activations", json={"email": email})
-    assert requested.status_code == 200
-    assert requested.json()["email"] == email
-    activation = requested.json()["token"]
+    assert len(capture_auth_emails["activation"]) == 1
+    assert capture_auth_emails["activation"][0]["email"] == email
+    activation = capture_auth_emails["activation"][0]["token"]
 
     assert client.post("/account-activations/confirm", json={"token": "not-a-token"}).status_code == 400
     confirmed = client.post("/account-activations/confirm", json={"token": activation})
@@ -69,36 +69,49 @@ def test_account_activation_and_password_reset():
     assert confirmed.json()["email"] == email
     assert _auth(email)
 
-    missing = client.post("/password-resets", json={"email": "missing@reefsupervisor.fr"})
-    assert missing.status_code == 404
+    capture_auth_emails["activation"].clear()
+    capture_auth_emails["reset"].clear()
 
-    reset = client.post("/password-resets", json={"email": email})
+    missing = client.post("/forgot-password", json={"email": "missing@reefsupervisor.fr"})
+    assert missing.status_code == 200
+    assert "token" not in missing.json()
+    assert missing.json()["detail"]
+    assert capture_auth_emails["reset"] == []
+
+    reset = client.post("/forgot-password", json={"email": email})
     assert reset.status_code == 200
-    body = reset.json()
-    assert body["email"] == email
-    assert client.post("/password-resets/confirm", json={
-        "id": body["id"],
+    assert "token" not in reset.json()
+    assert reset.json()["detail"] == missing.json()["detail"]
+    assert len(capture_auth_emails["reset"]) == 1
+    reset_payload = capture_auth_emails["reset"][0]
+    assert reset_payload["email"] == email
+    user_id = reset_payload["user_id"]
+    token = reset_payload["token"]
+
+    rate_limit_module.auth_rate_limiter.reset()
+    assert client.post("/recover-password", json={
+        "id": user_id,
         "token": "not-a-token",
         "password": "replaced",
     }).status_code == 400
-    assert client.post("/password-resets/confirm", json={
-        "id": body["id"] + 9999,
-        "token": body["token"],
+    assert client.post("/recover-password", json={
+        "id": user_id + 9999,
+        "token": token,
         "password": "replaced",
     }).status_code == 400
 
-    changed = client.post("/password-resets/confirm", json={
-        "id": str(body["id"]),
-        "token": body["token"],
+    changed = client.post("/recover-password", json={
+        "id": str(user_id),
+        "token": token,
         "password": "replaced",
     })
     assert changed.status_code == 200
-    assert changed.json()["id"] == body["id"]
+    assert changed.json()["id"] == user_id
     assert client.post("/token", data={"username": email, "password": "test"}).status_code == 401
     assert _auth(email, "replaced")
-    assert client.post("/password-resets/confirm", json={
-        "id": body["id"],
-        "token": body["token"],
+    assert client.post("/recover-password", json={
+        "id": user_id,
+        "token": token,
         "password": "again",
     }).status_code == 400
 

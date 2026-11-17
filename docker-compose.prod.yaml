@@ -16,6 +16,12 @@ services:
       UPLOAD_DIR: /data/uploads
       TURNSTILE_ENABLED: ${TURNSTILE_ENABLED:-true}
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY is required when Turnstile is enabled}
+      MAIL_DRIVER: ${MAIL_DRIVER:-mailjet}
+      EMAIL_FROM: ${EMAIL_FROM:-contact@reef-supervisor.fr}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Reef Supervisor}
+      MAILJET_API_KEY: ${MAILJET_API_KEY:?MAILJET_API_KEY is required}
+      MAILJET_API_SECRET: ${MAILJET_API_SECRET:?MAILJET_API_SECRET is required}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:?FRONTEND_BASE_URL is required}
     volumes:
       - reef-uploads:/data/uploads
     depends_on:

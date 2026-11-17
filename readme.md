@@ -10,6 +10,7 @@ docker compose up --build
 
 - API : http://localhost:8080 (documentation interactive : http://localhost:8080/docs)
 - Postgres : `localhost:5432`, utilisateur `reef`, mot de passe `reef`, base `reef`
+- Maildev (SMTP catcher) : UI http://localhost:1080 — SMTP `maildev:1025` (depuis l’API) / `localhost:1025` (depuis l’hôte)
 - Le code est monté dans le conteneur et Uvicorn recharge à chaud
 - Secret local uniquement : `SECRET_KEY=dev-only-change-me-not-for-production`
 - Turnstile local : `TURNSTILE_ENABLED=false` (vérification désactivée). Pour tester avec Cloudflare, utilisez les [clés de test](https://developers.cloudflare.com/turnstile/troubleshooting/testing/) et `TURNSTILE_ENABLED=true`.
@@ -34,6 +35,11 @@ export POSTGRES_PASSWORD="change-me"
 export ACCESS_TOKEN_EXPIRE_MINUTES="1440"
 export TURNSTILE_ENABLED=true
 export TURNSTILE_SECRET_KEY="your-cloudflare-turnstile-secret"
+export MAIL_DRIVER=mailjet
+export EMAIL_FROM=contact@reef-supervisor.fr
+export MAILJET_API_KEY="your-mailjet-api-key"
+export MAILJET_API_SECRET="your-mailjet-api-secret"
+export FRONTEND_BASE_URL="https://app.example.com"
 docker compose -f docker-compose.prod.yaml up --build -d
 ```
 
@@ -43,25 +49,39 @@ L’API écoute le port 80 de la machine. `SECRET_KEY` et `POSTGRES_PASSWORD` so
 
 | Variable | Rôle |
 | --- | --- |
-| `TURNSTILE_ENABLED` | `true` pour exiger et vérifier le token Cloudflare Turnstile sur `POST /token` et `POST /users` ; `false` pour le skip (local/dev) |
+| `TURNSTILE_ENABLED` | `true` pour exiger et vérifier le token Cloudflare Turnstile sur les POSTs auth ; `false` pour le skip (local/dev) |
 | `TURNSTILE_SECRET_KEY` | Secret Turnstile (API only, jamais exposé au frontend) |
 
 - `POST /token` : champ formulaire supplémentaire `turnstileToken` (avec `username` / `password` OAuth2).
-- `POST /users` : champ JSON `turnstileToken` sur le corps d’inscription.
-- Rate limit in-memory : ~10 requêtes / minute / IP sur ces deux routes uniquement (IP via `CF-Connecting-IP`, sinon `X-Forwarded-For`, sinon peer socket).
+- `POST /users`, `POST /account-activations`, `POST /forgot-password`, `POST /recover-password` : champ JSON `turnstileToken`.
+- Rate limit in-memory : ~10 requêtes / minute / IP sur ces routes (IP via `CF-Connecting-IP`, sinon `X-Forwarded-For`, sinon peer socket).
+
+### Email (Mailjet / Maildev)
+
+| Variable | Rôle |
+| --- | --- |
+| `MAIL_DRIVER` | `mailjet`, `smtp`, or `auto` (auto → Mailjet when API keys are set, else SMTP) |
+| `EMAIL_FROM` | From address (default / example: `contact@reef-supervisor.fr`) |
+| `EMAIL_FROM_NAME` | From display name (default `Reef Supervisor`) |
+| `MAILJET_API_KEY` | Mailjet API key (prod) |
+| `MAILJET_API_SECRET` | Mailjet API secret (prod; `MAILJET_SECRET` also accepted) |
+| `SMTP_HOST` / `SMTP_PORT` | SMTP target for local Maildev (defaults `maildev` / `1025`) |
+| `FRONTEND_BASE_URL` | Base URL for links in emails (`FRONTEND_URL` also accepted) |
+
+Local Compose uses `MAIL_DRIVER=smtp` and the `maildev` service. Open http://localhost:1080 to inspect messages. Tokens appear **only** in email links, never in JSON responses.
 
 ## Routes ajoutées
 
 | Appel | Méthode et chemin | Corps | Réponse |
 | --- | --- | --- | --- |
-| `requestAccountActivation` | `POST /account-activations` | `{ "email" }` | `{ "email", "token" }` |
+| `requestAccountActivation` | `POST /account-activations` | `{ "email", "turnstileToken?" }` | `{ "detail" }` (email sent if account exists; no token) |
 | `activateAccount` | `POST /account-activations/confirm` | `{ "token" }` | `{ "id", "email" }` |
-| `requestPasswordReset` | `POST /password-resets` | `{ "email" }` | `{ "id", "email", "token" }` |
-| `resetPassword` | `POST /password-resets/confirm` | `{ "id", "token", "password" }` | `{ "id", "email" }` |
+| `requestPasswordReset` | `POST /forgot-password` | `{ "email", "turnstileToken?" }` | `{ "detail" }` (non-enumerating; no token) |
+| `resetPassword` | `POST /recover-password` | `{ "id", "token", "password", "turnstileToken?" }` | `{ "id", "email" }` |
 | `updateTank` | `PATCH /tanks/{id}` | `{ "name" }` + JWT | `{ "id", "name", "photo_url" }` |
 | `deleteTank` | `DELETE /tanks/{id}` | JWT | `204` |
 | `uploadTankPhoto` | `PATCH /tanks/{id}/photo` | champ `file` + JWT | `{ "id", "name", "photo_url" }` |
 | lecture photo | `GET /tanks/{id}/photo` | JWT | fichier |
 | `setMeasureTimestamp` | `PATCH /measures/{id}/timestamp` | `{ "created_at" }` + JWT | mesure |
 
-Les jetons d’activation et de réinitialisation sont renvoyés dans la réponse (pas d’envoi d’e-mail). Le fichier photo accepte png, gif, svg, jpeg et jpg.
+Registration (`POST /users`) creates an inactive account and emails an activation link (`{FRONTEND_BASE_URL}/login/{token}`). Password reset emails use `{FRONTEND_BASE_URL}/recover-password/{id}/{token}`. The photo file accepts png, gif, svg, jpeg and jpg.

@@ -20,9 +20,16 @@ services:
       KEEP_ROOT: "true"
       TURNSTILE_ENABLED: "false"
       TURNSTILE_SECRET_KEY: ""
+      MAIL_DRIVER: smtp
+      SMTP_HOST: maildev
+      SMTP_PORT: "1025"
+      EMAIL_FROM: contact@reef-supervisor.fr
+      FRONTEND_BASE_URL: http://localhost:5173
     depends_on:
       database:
         condition: service_healthy
+      maildev:
+        condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/openapi.json')"]
       interval: 5s
@@ -48,6 +55,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
+    networks:
+      - reef
+
+  maildev:
+    image: maildev/maildev:2.1.0
+    container_name: reef-maildev
+    ports:
+      - "1080:1080"
+      - "1025:1025"
     networks:
       - reef
 
