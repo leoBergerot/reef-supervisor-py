@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Security
-from app.managers import UserManager
-from app.schemas.user import User
-from app.models.user import UserRequest, UserResponse
-from app.core.security import hash_password
-from app.repositories.user_repository import UserRepository
 from typing import Annotated
-from app.core.security import get_current_user
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Security
+
+from app.core.client_ip import get_client_ip
+from app.core.rate_limit import rate_limit_auth
+from app.core.security import get_current_user, hash_password
+from app.core.turnstile import verify_turnstile_token
+from app.managers import UserManager
+from app.models.user import UserCreateRequest, UserRequest, UserResponse
+from app.repositories.user_repository import UserRepository
+from app.schemas.user import User
 
 router = APIRouter(
     prefix="/users",
@@ -14,8 +18,14 @@ router = APIRouter(
 
 
 @router.post("", response_model=UserResponse)
-def create_user(user: UserRequest, user_repository: Annotated[UserRepository, Depends(UserRepository)],
-                user_manager: Annotated[UserManager, Depends(UserManager)]):
+def create_user(
+        request: Request,
+        user: UserCreateRequest,
+        user_repository: Annotated[UserRepository, Depends(UserRepository)],
+        user_manager: Annotated[UserManager, Depends(UserManager)],
+        _rate_limit: Annotated[None, Depends(rate_limit_auth)] = None,
+):
+    verify_turnstile_token(user.turnstileToken, get_client_ip(request))
     if not user_repository.is_email_unique(str(user.email)):
         raise HTTPException(status_code=400, detail="Email already registered")
 
