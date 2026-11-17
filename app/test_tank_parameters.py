@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 from app.db.session import engine
 from app.fixtures.fixtures import load_fixtures
 from app.main import app
-from app.schemas import Parameter
+from app.schemas import Parameter, User
 
 client = TestClient(app)
 
@@ -42,6 +42,11 @@ def _auth(email: str, password: str = "test") -> str:
 def _create_user(email: str, password: str = "test") -> dict:
     response = client.post("/users", json={"email": email, "password": password})
     assert response.status_code == 200, response.text
+    with Session(engine) as session:
+        user = session.exec(select(User).where(User.email == email)).one()
+        user.is_active = True
+        session.add(user)
+        session.commit()
     return response.json()
 
 

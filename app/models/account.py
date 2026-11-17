@@ -2,22 +2,18 @@ from pydantic import BaseModel, EmailStr, Field
 
 
 class EmailRequest(BaseModel):
+    """Auth email trigger body. turnstileToken is required when TURNSTILE_ENABLED=true."""
+
     email: EmailStr
+    turnstileToken: str | None = None
 
 
-class ActivationTokenResponse(BaseModel):
-    email: EmailStr
-    token: str
+class MessageResponse(BaseModel):
+    detail: str
 
 
 class ActivationConfirmRequest(BaseModel):
     token: str = Field(min_length=1)
-
-
-class PasswordResetTokenResponse(BaseModel):
-    id: int
-    email: EmailStr
-    token: str
 
 
 class PasswordResetConfirmRequest(BaseModel):

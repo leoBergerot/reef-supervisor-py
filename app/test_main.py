@@ -5,7 +5,7 @@ import random
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from .core.security import hash_password
 from .db.session import engine
@@ -38,6 +38,7 @@ def test_user_creation():
 
     assert response.status_code == 200
     assert response.json()['email'] == email
+    assert "token" not in response.json()
 
     parameter_repository = ParameterRepository()
     preference_repository = PreferenceRepository()
@@ -48,6 +49,13 @@ def test_user_creation():
     parameters = parameter_repository.get_all()
     preferences = preference_repository.get_by_user(user.to_core_no_relation())
     assert len(parameters) == len(preferences)
+
+    # Activate so later session-scoped auth fixtures can obtain a token
+    with Session(engine) as session:
+        db_user = session.exec(select(User).where(User.email == email)).one()
+        db_user.is_active = True
+        session.add(db_user)
+        session.commit()
 
     # test user already register
     response = client.post("/users", json={

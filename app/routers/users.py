@@ -4,12 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Security
 
 from app.core.client_ip import get_client_ip
 from app.core.rate_limit import rate_limit_auth
-from app.core.security import get_current_user, hash_password
+from app.core.security import create_action_token, get_current_user, hash_password
 from app.core.turnstile import verify_turnstile_token
 from app.managers import UserManager
 from app.models.user import UserCreateRequest, UserRequest, UserResponse
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import User
+from app.services.email import get_email_sender, send_account_activation_email
 
 router = APIRouter(
     prefix="/users",
@@ -30,8 +31,15 @@ def create_user(
         raise HTTPException(status_code=400, detail="Email already registered")
 
     hashed_password = hash_password(user.password)
-    new_user = User(email=user.email, password=hashed_password)
+    new_user = User(email=user.email, password=hashed_password, is_active=False)
     new_user = user_manager.create_add_preferences_persist(new_user)
+
+    token = create_action_token("activation", new_user.id, new_user.email)
+    send_account_activation_email(
+        get_email_sender(),
+        email=new_user.email,
+        token=token,
+    )
 
     return UserResponse.model_validate(new_user, from_attributes=True)
 

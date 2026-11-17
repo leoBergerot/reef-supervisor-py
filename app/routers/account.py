@@ -1,31 +1,51 @@
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException, Request
+
+from app.core.client_ip import get_client_ip
+from app.core.rate_limit import rate_limit_auth
 from app.core.security import create_action_token, decode_action_token, hash_password
+from app.core.turnstile import verify_turnstile_token
 from app.models.account import (
     ActivationConfirmRequest,
-    ActivationTokenResponse,
     EmailRequest,
+    MessageResponse,
     PasswordResetConfirmRequest,
-    PasswordResetTokenResponse,
 )
 from app.models.user import UserResponse
 from app.repositories.user_repository import UserRepository
+from app.services.email import (
+    get_email_sender,
+    send_account_activation_email,
+    send_password_reset_email,
+)
 
 router = APIRouter(tags=["Account"])
 
+PASSWORD_RESET_ACK = (
+    "If an account exists for this email, a reset link has been sent."
+)
+ACCOUNT_ACTIVATION_ACK = (
+    "If an account exists for this email, an activation link has been sent."
+)
 
-def _require_user_by_email(email: str):
-    user = UserRepository().get_by_email(str(email))
-    if user is None:
-        raise HTTPException(status_code=404, detail="Email not registered")
-    return user
 
-
-@router.post("/account-activations", response_model=ActivationTokenResponse)
-def request_account_activation(body: EmailRequest):
-    user = _require_user_by_email(str(body.email))
-    token = create_action_token("activation", user.id, user.email)
-    return ActivationTokenResponse(email=user.email, token=token)
+@router.post("/account-activations", response_model=MessageResponse)
+def request_account_activation(
+        request: Request,
+        body: EmailRequest,
+        _rate_limit: Annotated[None, Depends(rate_limit_auth)] = None,
+):
+    verify_turnstile_token(body.turnstileToken, get_client_ip(request))
+    user = UserRepository().get_by_email(str(body.email))
+    if user is not None:
+        token = create_action_token("activation", user.id, user.email)
+        send_account_activation_email(
+            get_email_sender(),
+            email=user.email,
+            token=token,
+        )
+    return MessageResponse(detail=ACCOUNT_ACTIVATION_ACK)
 
 
 @router.post("/account-activations/confirm", response_model=UserResponse)
@@ -38,14 +58,31 @@ def activate_account(body: ActivationConfirmRequest):
     return UserResponse(id=activated.id, email=activated.email)
 
 
-@router.post("/password-resets", response_model=PasswordResetTokenResponse)
-def request_password_reset(body: EmailRequest):
-    user = _require_user_by_email(str(body.email))
-    token = create_action_token("password_reset", user.id, user.email, user.password)
-    return PasswordResetTokenResponse(id=user.id, email=user.email, token=token)
+@router.post("/password-resets", response_model=MessageResponse)
+@router.post("/forgot-password", response_model=MessageResponse, include_in_schema=False)
+def request_password_reset(
+        request: Request,
+        body: EmailRequest,
+        _rate_limit: Annotated[None, Depends(rate_limit_auth)] = None,
+):
+    """Forgot-password: always returns the same acknowledgement (no email enumeration)."""
+    verify_turnstile_token(body.turnstileToken, get_client_ip(request))
+    user = UserRepository().get_by_email(str(body.email))
+    if user is not None:
+        token = create_action_token(
+            "password_reset", user.id, user.email, user.password
+        )
+        send_password_reset_email(
+            get_email_sender(),
+            email=user.email,
+            user_id=user.id,
+            token=token,
+        )
+    return MessageResponse(detail=PASSWORD_RESET_ACK)
 
 
 @router.post("/password-resets/confirm", response_model=UserResponse)
+@router.post("/recover-password", response_model=UserResponse, include_in_schema=False)
 def reset_password(body: PasswordResetConfirmRequest):
     repository = UserRepository()
     user = repository.get_by_id(body.id)
