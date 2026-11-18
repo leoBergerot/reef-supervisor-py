@@ -11,6 +11,7 @@ from app.models.user import UserCreateRequest, UserRequest, UserResponse
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import User
 from app.services.email import get_email_sender, send_account_activation_email
+from app.services.locale import resolve_locale
 
 router = APIRouter(
     prefix="/users",
@@ -34,11 +35,17 @@ def create_user(
     new_user = User(email=user.email, password=hashed_password, is_active=False)
     new_user = user_manager.create_add_preferences_persist(new_user)
 
+    locale = resolve_locale(
+        body_locale=user.locale,
+        body_lang=user.lang,
+        request=request,
+    )
     token = create_action_token("activation", new_user.id, new_user.email)
     send_account_activation_email(
         get_email_sender(),
         email=new_user.email,
         token=token,
+        locale=locale,
     )
 
     return UserResponse.model_validate(new_user, from_attributes=True)

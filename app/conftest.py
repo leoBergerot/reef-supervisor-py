@@ -15,11 +15,13 @@ def capture_auth_emails(monkeypatch):
     """Prevent real SMTP/Mailjet calls; record activation and reset payloads."""
     sent = {"activation": [], "reset": []}
 
-    def fake_activation(_sender, *, email, token):
-        sent["activation"].append({"email": email, "token": token})
+    def fake_activation(_sender, *, email, token, locale=None):
+        sent["activation"].append({"email": email, "token": token, "locale": locale})
 
-    def fake_reset(_sender, *, email, user_id, token):
-        sent["reset"].append({"email": email, "user_id": user_id, "token": token})
+    def fake_reset(_sender, *, email, user_id, token, locale=None):
+        sent["reset"].append(
+            {"email": email, "user_id": user_id, "token": token, "locale": locale}
+        )
 
     monkeypatch.setattr(
         "app.routers.users.send_account_activation_email", fake_activation

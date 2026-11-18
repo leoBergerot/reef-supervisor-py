@@ -13,6 +13,11 @@ import httpx
 from fastapi import HTTPException, status
 
 from app.core.config import settings
+from app.services.email_templates import (
+    render_activation_email,
+    render_password_reset_email,
+)
+from app.services.locale import DEFAULT_LOCALE, normalize_locale
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +29,7 @@ class EmailMessage:
     to_email: str
     subject: str
     html: str
+    text: str = ""
     to_name: str | None = None
 
 
@@ -39,21 +45,20 @@ class MailjetEmailSender:
         self._from_name = from_name
 
     def send(self, message: EmailMessage) -> None:
-        payload = {
-            "Messages": [
+        part: dict = {
+            "From": {"Email": self._from_email, "Name": self._from_name},
+            "To": [
                 {
-                    "From": {"Email": self._from_email, "Name": self._from_name},
-                    "To": [
-                        {
-                            "Email": message.to_email,
-                            "Name": message.to_name or message.to_email,
-                        }
-                    ],
-                    "Subject": message.subject,
-                    "HTMLPart": message.html,
+                    "Email": message.to_email,
+                    "Name": message.to_name or message.to_email,
                 }
-            ]
+            ],
+            "Subject": message.subject,
+            "HTMLPart": message.html,
         }
+        if message.text:
+            part["TextPart"] = message.text
+        payload = {"Messages": [part]}
         try:
             response = httpx.post(
                 MAILJET_SEND_URL,
@@ -95,7 +100,11 @@ class SmtpEmailSender:
         mail["Subject"] = message.subject
         mail["From"] = f"{self._from_name} <{self._from_email}>"
         mail["To"] = message.to_email
-        mail.set_content(message.html, subtype="html")
+        if message.text:
+            mail.set_content(message.text)
+            mail.add_alternative(message.html, subtype="html")
+        else:
+            mail.set_content(message.html, subtype="html")
         try:
             with smtplib.SMTP(self._host, self._port, timeout=15) as smtp:
                 if self._use_tls:
@@ -157,32 +166,44 @@ def account_activation_link(token: str) -> str:
     return f"{frontend_base_url()}/login/{quote(token, safe='')}"
 
 
-def send_password_reset_email(sender: EmailSender, *, email: str, user_id: int, token: str) -> None:
+def _locale(locale: str | None) -> str:
+    return normalize_locale(locale) or DEFAULT_LOCALE
+
+
+def send_password_reset_email(
+    sender: EmailSender,
+    *,
+    email: str,
+    user_id: int,
+    token: str,
+    locale: str | None = None,
+) -> None:
     link = password_reset_link(user_id, token)
+    rendered = render_password_reset_email(locale=_locale(locale), action_url=link)
     sender.send(
         EmailMessage(
             to_email=email,
-            subject="Reef Supervisor - Recover password",
-            html=(
-                "<h3>Reef Supervisor</h3>"
-                "<p>To recover your password, click "
-                f'<a href="{link}">here</a>.</p>'
-                "<p>If you did not request this, you can ignore this email.</p>"
-            ),
+            subject=rendered.subject,
+            html=rendered.html,
+            text=rendered.text,
         )
     )
 
 
-def send_account_activation_email(sender: EmailSender, *, email: str, token: str) -> None:
+def send_account_activation_email(
+    sender: EmailSender,
+    *,
+    email: str,
+    token: str,
+    locale: str | None = None,
+) -> None:
     link = account_activation_link(token)
+    rendered = render_activation_email(locale=_locale(locale), action_url=link)
     sender.send(
         EmailMessage(
             to_email=email,
-            subject="Reef Supervisor - Enable your account",
-            html=(
-                "<h3>Reef Supervisor</h3>"
-                "<p>To enable your account, click "
-                f'<a href="{link}">here</a>.</p>'
-            ),
+            subject=rendered.subject,
+            html=rendered.html,
+            text=rendered.text,
         )
     )
