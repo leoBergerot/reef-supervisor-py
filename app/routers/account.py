@@ -19,6 +19,7 @@ from app.services.email import (
     send_account_activation_email,
     send_password_reset_email,
 )
+from app.services.locale import resolve_locale
 
 router = APIRouter(tags=["Account"])
 
@@ -36,14 +37,21 @@ def request_account_activation(
         body: EmailRequest,
         _rate_limit: Annotated[None, Depends(rate_limit_auth)] = None,
 ):
+    """Resend activation email. Registration already sends one via POST /users."""
     verify_turnstile_token(body.turnstileToken, get_client_ip(request))
     user = UserRepository().get_by_email(str(body.email))
     if user is not None:
+        locale = resolve_locale(
+            body_locale=body.locale,
+            body_lang=body.lang,
+            request=request,
+        )
         token = create_action_token("activation", user.id, user.email)
         send_account_activation_email(
             get_email_sender(),
             email=user.email,
             token=token,
+            locale=locale,
         )
     return MessageResponse(detail=ACCOUNT_ACTIVATION_ACK)
 
@@ -69,6 +77,11 @@ def request_password_reset(
     verify_turnstile_token(body.turnstileToken, get_client_ip(request))
     user = UserRepository().get_by_email(str(body.email))
     if user is not None:
+        locale = resolve_locale(
+            body_locale=body.locale,
+            body_lang=body.lang,
+            request=request,
+        )
         token = create_action_token(
             "password_reset", user.id, user.email, user.password
         )
@@ -77,6 +90,7 @@ def request_password_reset(
             email=user.email,
             user_id=user.id,
             token=token,
+            locale=locale,
         )
     return MessageResponse(detail=PASSWORD_RESET_ACK)
 

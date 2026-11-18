@@ -138,11 +138,99 @@ def test_register_sends_activation_email_without_token(capture_auth_emails):
     assert body["email"] == email
     assert "token" not in body
     assert len(capture_auth_emails["activation"]) == 1
+    assert capture_auth_emails["activation"][0]["locale"] == "fr"
     token = capture_auth_emails["activation"][0]["token"]
     assert client.post("/token", data={"username": email, "password": "test"}).status_code == 401
     confirmed = client.post("/account-activations/confirm", json={"token": token})
     assert confirmed.status_code == 200
     assert client.post("/token", data={"username": email, "password": "test"}).status_code == 200
+
+
+def test_register_respects_locale_body_field(capture_auth_emails):
+    email = _email()
+    capture_auth_emails["activation"].clear()
+    response = client.post(
+        "/users",
+        json={"email": email, "password": "test", "locale": "en"},
+    )
+    assert response.status_code == 200
+    assert len(capture_auth_emails["activation"]) == 1
+    assert capture_auth_emails["activation"][0]["locale"] == "en"
+
+
+def test_register_respects_accept_language(capture_auth_emails):
+    email = _email()
+    capture_auth_emails["activation"].clear()
+    response = client.post(
+        "/users",
+        json={"email": email, "password": "test"},
+        headers={"Accept-Language": "en-US,en;q=0.9"},
+    )
+    assert response.status_code == 200
+    assert capture_auth_emails["activation"][0]["locale"] == "en"
+
+
+def test_forgot_password_respects_lang_alias(capture_auth_emails):
+    email = _email()
+    created = client.post("/users", json={"email": email, "password": "test"})
+    assert created.status_code == 200
+    _activate(email)
+    capture_auth_emails["reset"].clear()
+    response = client.post(
+        "/forgot-password",
+        json={"email": email, "lang": "en"},
+    )
+    assert response.status_code == 200
+    assert len(capture_auth_emails["reset"]) == 1
+    assert capture_auth_emails["reset"][0]["locale"] == "en"
+
+
+def test_activation_templates_fr_en_include_cta_and_text():
+    from app.services.email_templates import (
+        render_activation_email,
+        render_password_reset_email,
+    )
+
+    fr = render_activation_email(
+        locale="fr", action_url="https://app.example.com/login/tok"
+    )
+    en = render_activation_email(
+        locale="en", action_url="https://app.example.com/login/tok"
+    )
+    assert "Activez" in fr.subject
+    assert "Activer mon compte" in fr.html
+    assert "https://app.example.com/login/tok" in fr.text
+    assert "Enable your account" in en.subject
+    assert "Enable my account" in en.html
+    assert "Reef Supervisor" in fr.html and "Reef Supervisor" in en.html
+
+    reset = render_password_reset_email(
+        locale="fr", action_url="https://app.example.com/recover-password/1/tok"
+    )
+    assert "Réinitialisation" in reset.subject
+    assert "Réinitialiser mon mot de passe" in reset.html
+    assert "https://app.example.com/recover-password/1/tok" in reset.text
+
+
+def test_mailjet_includes_text_part(monkeypatch):
+    monkeypatch.setattr(settings, "EMAIL_FROM", "contact@reef-supervisor.fr")
+    sender = MailjetEmailSender("key", "secret", "contact@reef-supervisor.fr", "Reef Supervisor")
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    with patch("app.services.email.httpx.post", return_value=mock_response) as mock_post:
+        from app.services.email import EmailMessage
+
+        sender.send(
+            EmailMessage(
+                to_email="user@example.com",
+                subject="Hello",
+                html="<p>Hi</p>",
+                text="Hi",
+            )
+        )
+    body = mock_post.call_args.kwargs["json"]
+    assert body["Messages"][0]["TextPart"] == "Hi"
+    assert body["Messages"][0]["HTMLPart"] == "<p>Hi</p>"
 
 
 def test_forgot_and_recover_require_turnstile_when_enabled(monkeypatch):

@@ -6,6 +6,9 @@ class EmailRequest(BaseModel):
 
     email: EmailStr
     turnstileToken: str | None = None
+    # Preferred: locale; lang accepted as alias from the Vite app.
+    locale: str | None = None
+    lang: str | None = None
 
 
 class MessageResponse(BaseModel):

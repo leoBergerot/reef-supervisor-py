@@ -70,13 +70,15 @@ L’API écoute le port 80 de la machine. `SECRET_KEY` et `POSTGRES_PASSWORD` so
 
 Local Compose uses `MAIL_DRIVER=smtp` and the `maildev` service. Open http://localhost:1080 to inspect messages. Tokens appear **only** in email links, never in JSON responses.
 
+Auth emails use HTML templates (branded Reef Supervisor CTA + plain-text fallback) in **FR** or **EN**. Locale resolution order: body `locale` / `lang` → `Accept-Language` → default `fr`. Registration sends **one** activation email from `POST /users`; `POST /account-activations` is for resend only.
+
 ## Routes ajoutées
 
 | Appel | Méthode et chemin | Corps | Réponse |
 | --- | --- | --- | --- |
-| `requestAccountActivation` | `POST /account-activations` | `{ "email", "turnstileToken?" }` | `{ "detail" }` (email sent if account exists; no token) |
+| `requestAccountActivation` | `POST /account-activations` | `{ "email", "turnstileToken?", "locale?" }` | `{ "detail" }` (resend; no token) |
 | `activateAccount` | `POST /account-activations/confirm` | `{ "token" }` | `{ "id", "email" }` |
-| `requestPasswordReset` | `POST /forgot-password` | `{ "email", "turnstileToken?" }` | `{ "detail" }` (non-enumerating; no token) |
+| `requestPasswordReset` | `POST /forgot-password` | `{ "email", "turnstileToken?", "locale?" }` | `{ "detail" }` (non-enumerating; no token) |
 | `resetPassword` | `POST /recover-password` | `{ "id", "token", "password", "turnstileToken?" }` | `{ "id", "email" }` |
 | `updateTank` | `PATCH /tanks/{id}` | `{ "name" }` + JWT | `{ "id", "name", "photo_url" }` |
 | `deleteTank` | `DELETE /tanks/{id}` | JWT | `204` |
